@@ -1,0 +1,4 @@
+name: mvp
+shape:
+  - POST /my-route/test
+  - PATCH /other-route/:name/:test

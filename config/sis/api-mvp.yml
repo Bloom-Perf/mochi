@@ -1,0 +1,10 @@
+name: mvp
+headers:
+  X-MACHINE-ID: test
+rules:
+  - matches: POST /my-route/test
+    status: 200/text
+    body: "{test: 2}"
+  - matches: PATCH /other-route/:name/:test
+    status: 400/text
+    body: testsè
