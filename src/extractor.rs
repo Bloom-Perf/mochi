@@ -1,13 +1,32 @@
 use std::str::FromStr;
-use axum::body::Body;
 use axum::http::{Method, StatusCode};
 use axum::http::uri::PathAndQuery;
-use axum::Json;
 use regex::Regex;
-use crate::model::core::{ApiCore, RuleCore};
-use crate::model::yaml::{ApiYaml, RuleYaml};
+use crate::model::core::{ApiCore, ApiSetCore, EndpointCore, RuleCore};
+use crate::model::yaml::{ApiShapeYaml, ApiYaml, RuleYaml};
+
+fn extract_endpoint(s: &str) -> Result<EndpointCore, String> {
+    let regex_method_path: Regex = Regex::new(r"^(?<method>[A-Z]+)\s+(?<path>.+)$").unwrap();
+
+    let (_, [method, path]) = regex_method_path
+        .captures(s)
+        .expect(&*format!("Malformed match, should be like ’METHOD /path/to/resource’ but was {}", s))
+        .extract();
+
+    match Method::from_str(method) {
+        Ok(m) => match PathAndQuery::from_str(path) {
+            Ok(p) => Ok(EndpointCore {
+                route: p,
+                method: m
+            }),
+            Err(e) => Err(e.to_string())
+        },
+        Err(e) => Err(e.to_string())
+    }
+}
 
 pub trait Extractor<Target> {
+
     fn extract(&self) -> Result<Target, String>;
 }
 
@@ -15,15 +34,7 @@ impl Extractor<RuleCore> for RuleYaml {
 
     fn extract(&self) -> Result<RuleCore, String> {
 
-        let regex_method_path: Regex = Regex::new(r"^(?<method>[A-Z]+)\s+(?<path>.+)$").unwrap();
-
-        let (_, [method, path]) = regex_method_path
-            .captures(&*self.matches)
-            .expect(&*format!("Malformed match, should be like ’METHOD /path/to/resource’ but was {}", self.matches))
-            .extract();
-
-        let real_method = Method::from_str(method).unwrap();
-        let real_path = PathAndQuery::from_str(path).unwrap();
+        let endpoint = extract_endpoint(&self.matches).unwrap();
 
         let regex_status: Regex = Regex::new(r"^(?<status>[0-9]+)/(?<format>[a-z]+)$").unwrap();
 
@@ -40,8 +51,7 @@ impl Extractor<RuleCore> for RuleYaml {
         });
 
         Ok(RuleCore {
-            route: real_path,
-            method: real_method,
+            endpoint,
             status: real_status,
             format: format.to_string(),
             body
@@ -58,12 +68,59 @@ impl Extractor<ApiCore> for ApiYaml {
             .map(|r| r.extract())
             .collect();
 
+        // TODO: ADD headers
+
         extracted_rules.map(|rules| {
             ApiCore {
-                name: self.name.to_owned(),
                 header: None,
                 rules
             }
         })
     }
+}
+
+impl Extractor<Vec<EndpointCore>> for ApiShapeYaml {
+    fn extract(&self) -> Result<Vec<EndpointCore>, String> {
+
+        let extracted_endpoints: Result<Vec<EndpointCore>, String> = self.shape
+            .clone()
+            .into_iter()
+            .map(|r| extract_endpoint(&*r))
+            .collect();
+
+        // TODO: ADD headers
+
+        extracted_endpoints
+    }
+}
+
+use itertools::Itertools;
+
+fn build(name: String, shape: Option<ApiShapeYaml>, apis: Vec<ApiYaml>) -> ApiSetCore {
+
+    let apis: Result<Vec<ApiCore>, String> = apis
+        .into_iter()
+        .map(|api| api.extract())
+        .collect();
+    // TODO: Validate with shape
+
+    ApiSetCore {
+        name: name.to_owned(),
+        shape: shape.and_then(|shape_yaml| shape_yaml.extract().ok()),
+        apis: apis.unwrap()
+    }
+}
+
+pub fn build_all(shapes: Vec<ApiShapeYaml>, apis: Vec<ApiYaml>) -> Vec<ApiSetCore> {
+    apis.into_iter()
+        .into_group_map_by(|x| x.name.to_owned())
+        .into_iter()
+        .map(|(key, values)| {
+            let may_be_shape = shapes
+                .clone()
+                .into_iter()
+                .find(|s| s.name.eq(&*key));
+            build(key.to_string(), may_be_shape, values)
+        })
+        .collect::<Vec<ApiSetCore>>()
 }
