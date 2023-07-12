@@ -88,8 +88,6 @@ impl Extractor<Vec<EndpointCore>> for ApiShapeYaml {
             .map(|r| extract_endpoint(&*r))
             .collect();
 
-        // TODO: ADD headers
-
         extracted_endpoints
     }
 }
