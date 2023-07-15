@@ -1,10 +1,11 @@
-use axum::http::{HeaderName, Method, StatusCode};
+use std::collections::HashMap;
+use axum::http::{Method, StatusCode};
 use axum::http::uri::PathAndQuery;
 
 
 #[derive(Clone, Debug)]
 pub struct ApiCore {
-    pub header: Option<HeaderName>,
+    pub headers: HashMap<String, String>,
     pub rules: Vec<RuleCore>
 }
 

@@ -44,9 +44,9 @@ impl Extractor<RuleCore> for RuleYaml {
             .extract();
 
         let real_status = StatusCode::from_str(status).unwrap();
-        let body: Option<String> = self.body.clone().and_then(|b| {
+        let body: Option<String> = self.body.to_owned().and_then(|b| {
             if b.is_empty() { None } else {
-                Some(b.to_owned())
+                Some(b)
             }
         });
 
@@ -63,16 +63,15 @@ impl Extractor<ApiCore> for ApiYaml {
     fn extract(&self) -> Result<ApiCore, String> {
 
         let extracted_rules: Result<Vec<RuleCore>, String> = self.rules
-            .clone()
-            .into_iter()
+            .iter()
             .map(|r| r.extract())
             .collect();
 
-        // TODO: ADD headers
+        let headers = self.headers.clone();
 
         extracted_rules.map(|rules| {
             ApiCore {
-                header: None,
+                headers,
                 rules
             }
         })

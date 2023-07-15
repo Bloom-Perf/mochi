@@ -1,10 +1,10 @@
+use std::collections::HashMap;
 use serde::{Deserialize};
-use serde_yaml::Mapping;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct ApiYaml {
     pub name: String,
-    pub headers: Mapping,
+    pub headers: HashMap<String, String>,
     pub rules: Vec<RuleYaml>
 }
 
