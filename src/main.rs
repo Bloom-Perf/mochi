@@ -1,20 +1,19 @@
-mod model;
 mod extractor;
 mod file;
+mod model;
+mod routes;
 
-use std::convert::Infallible;
-use axum::{
-    routing::{get, post},
-    Router,
-};
-use std::net::SocketAddr;
-use axum::body::Body;
-use axum::http::{Method, Response};
-use axum::routing::{delete, patch, put};
-use crate::extractor::{build_all};
+use crate::extractor::build_all;
 use crate::file::ConfigurationFolder;
 use crate::model::core::SystemCore;
-use crate::model::yaml::{SystemFolder};
+use crate::model::yaml::SystemFolder;
+use axum::body::Body;
+use axum::http::{Method, Request, StatusCode};
+use axum::response::IntoResponse;
+use axum::routing::{on, patch, post, MethodFilter};
+use axum::Router;
+use std::net::SocketAddr;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
@@ -22,46 +21,43 @@ async fn main() {
 
     let system_folders: Vec<SystemFolder> = ConfigurationFolder::new("./config").load_systems();
 
-    let systems: Vec<SystemCore> = system_folders
-        .into_iter()
-        .map(|system| SystemCore {
-            name: system.name,
-            api_sets: build_all(system.shapes, system.apis)
-        }).collect();
-
     // build our application with a route
-    let mut app: Router = Router::new();
 
-    for system in systems.into_iter() {
-        for api_set in system.api_sets.into_iter() {
-            for api in api_set.apis.into_iter() {
-                for rule in api.rules.into_iter() {
-                    let create = move || async move {
-                        let body = rule.body.map(|str| Body::from(str)).unwrap_or(Body::empty());
-                        let body = axum::body::boxed(body);
-                        let res = Response::builder()
-                            .status(rule.status)
-                            .body(body)
-                            .unwrap();
-                        Ok::<_, Infallible>(res)
-                    };
+    let handlers_maps: Vec<_> = system_folders
+        .into_iter()
+        .map(|system| {
+            let s = SystemCore {
+                name: system.name.to_owned(),
+                api_sets: build_all(system.shapes.to_owned(), system.apis),
+            };
+            s.generate_handlers_map()
+        })
+        .collect();
 
+    // handlers_maps.clone().iter().for_each(|e| {
+    //     for x in e.keys() {
+    //         dbg!(x);
+    //     }
+    // });
 
-                    app = app.route(
-                        &*format!("/{}/{}{}", &*system.name, &api_set.name, rule.endpoint.route),
-                        match rule.endpoint.method {
-                            Method::GET => get(create),
-                            Method::POST => post(create),
-                            Method::PATCH => patch(create),
-                            Method::PUT => put(create),
-                            Method::DELETE => delete(create),
-                            s => panic!("Unknown http method: {}", s)
+    let app: Router = handlers_maps.iter().fold(Router::new(), move |r, map| {
+        let subrouter = map.iter().fold(Router::new(), |acc, (endpoint, handler)| {
+            // dbg!(endpoint.clone());
+            acc.route(
+                &endpoint.route,
+                on(MethodFilter::try_from(endpoint.clone().method).unwrap(), {
+                    let cloned = Arc::clone(handler);
+                    move |request: Request<Body>| async move {
+                        match cloned(&request) {
+                            Some(res) => res,
+                            None => StatusCode::NOT_FOUND.into_response(),
                         }
-                    );
-                }
-            }
-        }
-    }
+                    }
+                }),
+            )
+        });
+        r.merge(subrouter)
+    });
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`

@@ -2,6 +2,7 @@ use std::str::FromStr;
 use axum::http::{Method, StatusCode};
 use axum::http::uri::PathAndQuery;
 use regex::Regex;
+use itertools::Itertools;
 use crate::model::core::{ApiCore, ApiSetCore, EndpointCore, RuleCore};
 use crate::model::yaml::{ApiShapeYaml, ApiYaml, RuleYaml};
 
@@ -90,8 +91,6 @@ impl Extractor<Vec<EndpointCore>> for ApiShapeYaml {
         extracted_endpoints
     }
 }
-
-use itertools::Itertools;
 
 fn build(name: String, shape: Option<ApiShapeYaml>, apis: Vec<ApiYaml>) -> ApiSetCore {
 

@@ -1,19 +1,18 @@
-use std::collections::HashMap;
-use axum::http::{Method, StatusCode};
 use axum::http::uri::PathAndQuery;
-
+use axum::http::{Method, StatusCode};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct ApiCore {
     pub headers: HashMap<String, String>,
-    pub rules: Vec<RuleCore>
+    pub rules: Vec<RuleCore>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ApiSetCore {
     pub name: String,
     pub shape: Option<Vec<EndpointCore>>,
-    pub apis: Vec<ApiCore>
+    pub apis: Vec<ApiCore>,
 }
 
 #[derive(Clone, Debug)]
@@ -21,7 +20,7 @@ pub struct RuleCore {
     pub endpoint: EndpointCore,
     pub status: StatusCode,
     pub format: String,
-    pub body: Option<String>
+    pub body: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -33,5 +32,5 @@ pub struct EndpointCore {
 #[derive(Clone, Debug)]
 pub struct SystemCore {
     pub name: String,
-    pub api_sets: Vec<ApiSetCore>
+    pub api_sets: Vec<ApiSetCore>,
 }
