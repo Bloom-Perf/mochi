@@ -10,17 +10,16 @@ use crate::model::yaml::SystemFolder;
 use crate::routes::handle_request;
 use axum::body::Body;
 use axum::http::Request;
-use axum::routing::{on, MethodFilter};
+use axum::routing::{get, on, MethodFilter};
 use axum::Router;
+use axum_prometheus::PrometheusMetricLayer;
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
-    // initialize tracing
+    let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
     let system_folders: Vec<SystemFolder> = ConfigurationFolder::new("./config").load_systems();
-
-    // build our application with a route
 
     let rules_maps: Vec<_> = system_folders
         .into_iter()
@@ -33,26 +32,24 @@ async fn main() {
         })
         .collect();
 
-    // handlers_maps.clone().iter().for_each(|e| {
-    //     for x in e.keys() {
-    //         dbg!(x);
-    //     }
-    // });
-
-    let app: Router = rules_maps.into_iter().fold(Router::new(), move |r, map| {
-        let subrouter = map
-            .into_iter()
-            .fold(Router::new(), |acc, (endpoint, rules)| {
-                // dbg!(endpoint.clone());
-                acc.route(
-                    &endpoint.route,
-                    on(MethodFilter::try_from(endpoint.clone().method).unwrap(), {
-                        move |request: Request<Body>| handle_request(request, rules.to_owned())
-                    }),
-                )
-            });
-        r.merge(subrouter)
-    });
+    let app: Router = rules_maps
+        .into_iter()
+        .fold(Router::new(), move |r, map| {
+            let subrouter = map
+                .into_iter()
+                .fold(Router::new(), |acc, (endpoint, rules)| {
+                    // dbg!(endpoint.clone());
+                    acc.route(
+                        &endpoint.route,
+                        on(MethodFilter::try_from(endpoint.clone().method).unwrap(), {
+                            move |request: Request<Body>| handle_request(request, rules.to_owned())
+                        }),
+                    )
+                });
+            r.merge(subrouter)
+        })
+        .route("/metrics", get(|| async move { metric_handle.render() }))
+        .layer(prometheus_layer);
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
