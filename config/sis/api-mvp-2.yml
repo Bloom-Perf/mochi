@@ -1,7 +1,7 @@
 name: mvp
 headers:
-  X-MACHINE-ID: test
-latency: !Constant 400
+  X-MACHINE-ID: test2
+latency: !Constant 1400
 rules:
   - matches: POST /my-route/test
     status: 200/text

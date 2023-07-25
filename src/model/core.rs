@@ -3,10 +3,12 @@ use axum::http::{Method, StatusCode};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
-pub struct ApiCore {
-    pub headers: HashMap<String, String>,
-    pub rules: Vec<RuleCore>,
+pub enum LatencyCore {
+    Constant(u32),
 }
+
+#[derive(Clone, Debug)]
+pub struct ApiCore(pub Vec<RuleCore>);
 
 #[derive(Clone, Debug)]
 pub struct ApiSetCore {
@@ -18,6 +20,8 @@ pub struct ApiSetCore {
 #[derive(Clone, Debug)]
 pub struct RuleCore {
     pub endpoint: EndpointCore,
+    pub headers: HashMap<String, String>,
+    pub latency: Option<LatencyCore>,
     pub status: StatusCode,
     pub format: String,
     pub body: Option<String>,
