@@ -34,9 +34,14 @@ pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Res
             if let Some(value) = rule.clone().latency {
                 compute_latency(value).await
             }
+
             let body = rule.body.clone().map(Body::from).unwrap_or(Body::empty());
             let body = axum::body::boxed(body);
-            return Response::builder().status(rule.status).body(body).unwrap();
+            return Response::builder()
+                .header("Content-Type", rule.format.to_owned())
+                .status(rule.status)
+                .body(body)
+                .unwrap();
         }
     }
     return StatusCode::NOT_FOUND.into_response();

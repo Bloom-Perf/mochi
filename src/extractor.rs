@@ -1,5 +1,7 @@
 use crate::model::core::{ApiCore, ApiSetCore, EndpointCore, LatencyCore, RuleCore};
-use crate::model::yaml::{ApiShapeYaml, ApiYaml, LatencyYaml, RuleYaml};
+use crate::model::yaml::{
+    ApiShapeYaml, ApiYaml, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
+};
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
 use itertools::Itertools;
@@ -18,40 +20,41 @@ fn extract_endpoint(s: String) -> Result<EndpointCore, String> {
         ))
         .extract();
 
-    match Method::from_str(method) {
-        Ok(m) => match PathAndQuery::from_str(path) {
-            Ok(p) => Ok(EndpointCore {
-                route: p,
-                method: m,
-            }),
-            Err(e) => Err(e.to_string()),
-        },
-        Err(e) => Err(e.to_string()),
-    }
+    let m = Method::from_str(method).map_err(|e| e.to_string())?;
+    let p = PathAndQuery::from_str(path).map_err(|e| e.to_string())?;
+
+    Ok(EndpointCore {
+        route: p,
+        method: m,
+    })
 }
 
 fn extract_rule(
     rule: &RuleYaml,
     api_latency: Option<LatencyYaml>,
     api_headers: HashMap<String, String>,
+    data: HashMap<String, ResponseDataYaml>,
 ) -> Result<RuleCore, String> {
-    let endpoint = extract_endpoint(rule.matches.to_owned()).unwrap();
+    let endpoint = extract_endpoint(rule.matches.to_owned())?;
 
-    let regex_status: Regex = Regex::new(r"^(?<status>[0-9]+)/(?<format>[a-z]+)$").unwrap();
-
-    let (_, [status, format]) = regex_status
-        .captures(&*rule.status)
-        .expect(&*format!(
-            "Malformed status, should be like ’200/json’ but was {}",
-            rule.status
-        ))
-        .extract();
-
-    let real_status = StatusCode::from_str(status).unwrap();
-    let body: Option<String> =
-        rule.body
-            .to_owned()
-            .and_then(|b| if b.is_empty() { None } else { Some(b) });
+    let (real_status, opt_body, opt_format) = match rule.response.clone() {
+        Response::File(path) => {
+            let file = data.get(&path).unwrap();
+            (
+                StatusCode::from_u16(file.status).ok(),
+                file.data
+                    .to_owned()
+                    .and_then(|b| if b.is_empty() { None } else { Some(b) }),
+                file.format.to_owned(),
+            )
+        }
+        Response::Inline(status, body, format) => (
+            StatusCode::from_u16(status).ok(),
+            body.to_owned()
+                .and_then(|b| if b.is_empty() { None } else { Some(b) }),
+            format,
+        ),
+    };
 
     Ok(RuleCore {
         endpoint,
@@ -63,17 +66,17 @@ fn extract_rule(
             .map(|latency| match latency {
                 LatencyYaml::Constant(value) => LatencyCore::Constant(value),
             }),
-        status: real_status,
-        format: format.to_string(),
-        body,
+        status: real_status.unwrap(),
+        format: opt_format.unwrap_or(String::from("text/plain")),
+        body: opt_body,
     })
 }
 
-fn extract_api(api: &ApiYaml) -> Result<ApiCore, String> {
+fn extract_api(api: &ApiYaml, data: &HashMap<String, ResponseDataYaml>) -> Result<ApiCore, String> {
     let extracted_rules: Result<Vec<RuleCore>, String> = api
         .rules
         .iter()
-        .map(|r| extract_rule(&r, api.latency.clone(), api.headers.clone()))
+        .map(|r| extract_rule(&r, api.latency.clone(), api.headers.clone(), data.clone()))
         .collect();
 
     extracted_rules.map(|rules| ApiCore(rules))
@@ -90,9 +93,16 @@ fn extract_api_shape(api_shape: &ApiShapeYaml) -> Result<Vec<EndpointCore>, Stri
     extracted_endpoints
 }
 
-fn build(name: String, shape: Option<ApiShapeYaml>, apis: Vec<ApiYaml>) -> ApiSetCore {
-    let apis: Result<Vec<ApiCore>, String> =
-        apis.into_iter().map(|api| extract_api(&api)).collect();
+fn build(
+    name: String,
+    shape: Option<ApiShapeYaml>,
+    apis: Vec<ApiYaml>,
+    data: &HashMap<String, ResponseDataYaml>,
+) -> ApiSetCore {
+    let apis: Result<Vec<ApiCore>, String> = apis
+        .into_iter()
+        .map(|api| extract_api(&api, data))
+        .collect();
     // TODO: Validate with shape
 
     ApiSetCore {
@@ -102,13 +112,19 @@ fn build(name: String, shape: Option<ApiShapeYaml>, apis: Vec<ApiYaml>) -> ApiSe
     }
 }
 
-pub fn build_all(shapes: Vec<ApiShapeYaml>, apis: Vec<ApiYaml>) -> Vec<ApiSetCore> {
+pub fn build_all(
+    shapes: Vec<ApiShapeYaml>,
+    apis: Vec<ApiYaml>,
+    data: HashMap<String, ResponseDataYaml>,
+) -> Vec<ApiSetCore> {
+    dbg!(data.keys().clone());
+    dbg!(apis.clone());
     apis.into_iter()
         .into_group_map_by(|x| x.name.to_owned())
         .into_iter()
         .map(|(key, values)| {
             let may_be_shape = shapes.clone().into_iter().find(|s| s.name.eq(&*key));
-            build(key.to_string(), may_be_shape, values)
+            build(key.to_string(), may_be_shape, values, &data)
         })
         .collect::<Vec<ApiSetCore>>()
 }
