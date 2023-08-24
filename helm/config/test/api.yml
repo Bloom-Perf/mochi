@@ -1,0 +1,9 @@
+name: mvp
+headers: {}
+latency: !Constant 200
+rules:
+  - matches: POST  /test/first
+    latency: !Constant 1000
+    response: !File first
+  - matches: PATCH /test/second
+    response: !File second

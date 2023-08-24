@@ -1,0 +1,64 @@
+namespace: namespace
+app: mochi
+
+replicaCount: 1
+
+image:
+  repository: "repository to change"
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: 0.0.1
+containerPort: 3000
+service:
+  type: ClusterIP
+  port: 9090
+resources:
+  limits:
+    cpu: 1
+    memory: 1024Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+ingress:
+  className: ""
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  paths:
+    - path: /mochi(/|$)(.*)
+
+imagePullSecrets: "image pull secret to change"
+nameOverride: ""
+fullnameOverride: ""
+
+configName: mochi-config
+volumes:
+  - name: mochi-config-volume
+    mountPath: /var/config
+    configMap:
+      name: mochi-config
+      defaultMode: 777
+env:
+  - name: CONFIG_PATH
+    value: /var/config
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+restartPolicy: Never
+ttlSecondsAfterFinished: 10
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: {}
+
+affinity: {}

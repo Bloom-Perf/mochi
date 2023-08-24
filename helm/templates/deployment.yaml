@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mochi.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mochi.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mochi.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mochi.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              value: {{ .value }}
+            {{ end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+          volumeMounts:
+            {{ range $path, $bytes := .Files.Glob "config/**" }}
+            - name: config-files-multipart
+              mountPath: {{ printf "/var/config/%s" (trimPrefix "config/" $path) | quote }}
+              subPath: {{ sha256sum $path | quote }}
+            {{ end }}
+
+          #volumeMounts:
+          #  {{- range .Values.volumes }}
+          #  - name: {{ .name }}
+          #    mountPath: {{ .mountPath }}
+          #    subPath: {{ .subPath }}
+          #  {{ end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecrets }}
+      volumes:
+        - name: config-files-multipart
+          configMap:
+            name: {{ .Values.configName }}
+        {{- range .Values.volumes }}
+        - name: {{ .name }}
+          {{ if .persistentVolumeClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .name }}
+          {{ end }}
+          #          {{ if .azureFile }}
+          #          azureFile:
+          #            secretName: {{ .azureFile.secretName }}
+          #            shareName: {{ .azureFile.shareName }}
+          #          {{ end }}
+          {{ if .configMap }}
+          configMap:
+            name: {{ .configMap.name }}
+          {{ end }}
+        {{ end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

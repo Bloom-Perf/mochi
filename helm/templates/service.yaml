@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mochi.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mochi.labels" . | nindent 4 }}
+  annotations:
+    prometheus/scrape: "true"
+    prometheus/scheme: "http"
+    prometheus/path: "/metrics"
+    prometheus/port: {{ .Values.containerPort | quote }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.containerPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "mochi.selectorLabels" . | nindent 4 }}

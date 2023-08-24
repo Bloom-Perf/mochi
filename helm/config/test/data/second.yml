@@ -1,0 +1,7 @@
+status: 409
+description: "Un autre endpoint de test"
+format: application/json
+data: |
+  {
+    "autre": "DELIVERED"
+  }
