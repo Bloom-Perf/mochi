@@ -14,18 +14,31 @@ impl ConfigurationFolder {
 
     pub fn load_systems(&self) -> Vec<SystemFolder> {
         let conf_dir = fs::read_dir(self.folder.clone())
-            .unwrap_or_else(|_| panic!("Configuration folder ’{}’ not accessible", self.folder));
+            .unwrap_or_else(|_| panic!("Could not read configuration folder '{}'", self.folder));
 
+        //
         let system_folders: Vec<SystemFolder> = conf_dir
             // Just keep directories
             .filter_map(|e| e.ok())
             .filter(|entity| entity.metadata().map(|m| m.is_dir()).unwrap_or(false))
             .map(|system_path| {
-                let system_dir = fs::read_dir(system_path.path())
-                    .unwrap_or_else(|_| panic!("Could not read system directory"));
+                let system_name = system_path
+                    .path()
+                    .file_name()
+                    .unwrap_or_else(|| panic!("Could not get system name"))
+                    .to_os_string()
+                    .into_string()
+                    .unwrap();
 
-                let system_entries = system_dir.filter_map(|e| e.ok()).collect::<Vec<_>>();
+                // Entries loaded per system folder (./config/system/*)
+                let system_entries = fs::read_dir(system_path.path())
+                    .unwrap_or_else(|_| {
+                        panic!("Could not read directory for system '{}'", system_name)
+                    })
+                    .filter_map(|e| e.ok())
+                    .collect::<Vec<_>>();
 
+                // data directory of the current system folder (./config/system/data/)
                 let system_data_dir = system_entries
                     .iter()
                     // Keeps files only
@@ -40,70 +53,77 @@ impl ConfigurationFolder {
                     .first()
                     .map(|data_path| {
                         fs::read_dir(data_path.path())
-                            .unwrap_or_else(|_| panic!("Could not read system directory"))
+                            .unwrap_or_else(|_| {
+                                panic!("Could not read data directory for system '{}'", system_name)
+                            })
                             .into_iter()
                             // Keeps files only
                             .filter_map(|i| i.ok())
                             .filter(|entity| {
                                 entity.metadata().map(|m| m.is_file()).unwrap_or(false)
                             })
-                            .filter_map(|entity| {
+                            .map(|entity| {
+                                let filename = entity.file_name().into_string().unwrap();
+
                                 let file_content = fs::read_to_string(entity.path())
                                     .unwrap_or_else(|_| {
+                                        panic!("Could not read file '{}'", filename)
+                                    });
+
+                                let yaml_response_data_file_content: ResponseDataYaml =
+                                    from_str(&*file_content).unwrap_or_else(|_| {
                                         panic!(
-                                            "File ’{}’ could not be read",
-                                            entity.file_name().into_string().unwrap()
+                                            "Could not decode response data yaml file '{}'",
+                                            filename
                                         )
                                     });
 
-                                dbg!(file_content.clone());
-
-                                let r: serde_yaml::Result<ResponseDataYaml> =
-                                    from_str(&*file_content);
-
-                                let filename = entity.file_name().into_string().unwrap();
+                                // Skip .yml suffix
                                 let truncated_filename = &filename[..(filename.len() - 4)];
-                                dbg!(truncated_filename);
-                                r.ok().map(|file| (truncated_filename.to_string(), file))
+
+                                (
+                                    truncated_filename.to_string(),
+                                    yaml_response_data_file_content,
+                                )
                             })
                             .collect()
                     })
                     .unwrap_or(HashMap::new());
 
-                let system_files: Vec<String> = system_entries
+                let system_files: Vec<(String, String)> = system_entries
                     .iter()
                     // Keeps files only
                     .filter(|entity| entity.metadata().map(|m| m.is_file()).unwrap_or(false))
                     .map(|entity| {
-                        fs::read_to_string(entity.path()).unwrap_or_else(|_| {
-                            panic!(
-                                "File ’{}’ could not be read",
-                                entity.file_name().into_string().unwrap()
-                            )
-                        })
+                        let filename = entity.file_name().into_string().unwrap();
+
+                        (
+                            filename.clone(),
+                            fs::read_to_string(entity.path()).unwrap_or_else(|_| {
+                                panic!("Could not read file '{}'", filename.clone())
+                            }),
+                        )
                     })
                     .collect();
 
                 let apis: Vec<ApiYaml> = system_files
                     .iter()
-                    .filter_map(|f| {
-                        let r: serde_yaml::Result<ApiYaml> = from_str(f);
-                        dbg!(r);
-                        let r: serde_yaml::Result<ApiYaml> = from_str(f);
+                    .filter_map(|(_filename, filecontent)| {
+                        let r: serde_yaml::Result<ApiYaml> = from_str(filecontent);
                         r.ok()
                     })
                     .collect();
 
                 let shapes: Vec<ApiShapeYaml> = system_files
                     .iter()
-                    .filter_map(|f| {
-                        let r: serde_yaml::Result<ApiShapeYaml> = from_str(f);
+                    .filter_map(|(_filename, filecontent)| {
+                        let r: serde_yaml::Result<ApiShapeYaml> = from_str(filecontent);
                         r.ok()
                     })
                     .collect();
 
                 SystemFolder {
-                    name: system_path.file_name().into_string().unwrap(),
+                    name: system_name,
                     apis,
                     shapes,
                     data: system_data_files,
