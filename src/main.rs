@@ -1,26 +1,34 @@
 mod extractor;
 mod file;
+mod logger;
 mod model;
 mod routes;
 
 use crate::extractor::build_all;
 use crate::file::ConfigurationFolder;
+use crate::logger::setup_logger;
 use crate::model::core::SystemCore;
 use crate::model::yaml::SystemFolder;
 use crate::routes::handle_request;
+
+use anyhow::{Context, Result};
 use axum::body::Body;
 use axum::http::Request;
 use axum::routing::{get, on, MethodFilter};
 use axum::Router;
 use axum_prometheus::PrometheusMetricLayer;
+use log::info;
 use std::env;
 use std::net::SocketAddr;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
+    setup_logger().context("Setup logger")?;
+
+    info!("Starting Mochi!");
+
     let configpath = env::var("CONFIG_PATH").unwrap_or("./config".to_string());
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
-
     let system_folders: Vec<SystemFolder> = ConfigurationFolder::new(configpath).load_systems();
 
     let rules_maps: Vec<_> = system_folders
@@ -59,5 +67,5 @@ async fn main() {
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+        .context("Starting http server")
 }
