@@ -28,7 +28,7 @@ async fn main() {
         .map(|system| {
             let s = SystemCore {
                 name: system.name.to_owned(),
-                api_sets: build_all(system.shapes.to_owned(), system.apis, system.data),
+                api_sets: build_all(system.shapes.to_owned(), system.apis, system.data).unwrap(),
             };
             s.generate_rules_map()
         })
