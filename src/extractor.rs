@@ -14,7 +14,7 @@ use std::str::FromStr;
 fn extract_endpoint(s: &String) -> Result<EndpointCore> {
     let regex_method_path: Regex = Regex::new(r"^(?<method>[A-Z]+)\s+(?<path>.+)$")?;
 
-    let captured_result = regex_method_path.captures(&*s).context(format!(
+    let captured_result = regex_method_path.captures(s).context(format!(
         "Could not parse endpoint '{}' (should be like 'METHOD /path/to/resource')",
         s
     ))?;
@@ -54,19 +54,18 @@ fn extract_rule(
         }
         Response::Inline(status, body, format) => (
             StatusCode::from_u16(status).context(format!("Parsing file status '{}'", status))?,
-            body.to_owned()
-                .and_then(|b| if b.is_empty() { None } else { Some(b) }),
+            body.and_then(|b| if b.is_empty() { None } else { Some(b) }),
             format,
         ),
     };
 
     Ok(RuleCore {
         endpoint,
-        headers: api_headers.clone(),
+        headers: api_headers,
         latency: rule
             .latency
             .clone()
-            .or(api_latency.clone())
+            .or(api_latency)
             .map(|latency| match latency {
                 LatencyYaml::Constant(value) => LatencyCore::Constant(value),
             }),
@@ -83,7 +82,7 @@ fn extract_api(api: &ApiYaml, data: &HashMap<String, ResponseDataYaml>) -> Resul
         .map(|r| extract_rule(r, api.latency.clone(), api.headers.clone(), data.clone()))
         .collect();
 
-    extracted_rules.map(|rules| ApiCore(rules))
+    extracted_rules.map(ApiCore)
 }
 
 fn extract_api_shape(api_shape: &ApiShapeYaml) -> Result<Vec<EndpointCore>> {
@@ -103,9 +102,9 @@ fn build(
     // TODO: Validate with shape
 
     Ok(ApiSetCore {
-        name: name.to_owned(),
+        name,
         shape: shape.and_then(|shape_yaml| extract_api_shape(&shape_yaml).ok()),
-        apis: apis.context(format!("Extracting apis"))?,
+        apis: apis.context("Extracting apis".to_string())?,
     })
 }
 
@@ -119,7 +118,7 @@ pub fn build_all(
         .into_iter()
         .map(|(key, values)| {
             let may_be_shape = shapes.clone().into_iter().find(|s| s.name.eq(&*key));
-            build(key.to_string(), may_be_shape, values, &data)
+            build(key, may_be_shape, values, &data)
         })
         .collect()
 }

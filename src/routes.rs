@@ -26,7 +26,7 @@ pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Res
             request
                 .headers()
                 .get(key)
-                .map(move |req_header_value| req_header_value.to_str().unwrap() == &*value)
+                .map(move |req_header_value| req_header_value.to_str().unwrap() == *value)
                 .unwrap_or(false)
         });
 
@@ -44,7 +44,7 @@ pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Res
                 .unwrap();
         }
     }
-    return StatusCode::NOT_FOUND.into_response();
+    StatusCode::NOT_FOUND.into_response()
 }
 
 pub type RulesMap = HashMap<HttpRoute, Vec<RuleCore>>;

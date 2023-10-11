@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 pub fn setup_logger() -> Result<(), fern::InitError> {
     fern::Dispatch::new()
         .format(|out, message, record| {

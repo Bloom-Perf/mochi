@@ -56,7 +56,6 @@ impl ConfigurationFolder {
                             .unwrap_or_else(|_| {
                                 panic!("Could not read data directory for system '{}'", system_name)
                             })
-                            .into_iter()
                             // Keeps files only
                             .filter_map(|i| i.ok())
                             .filter(|entity| {
@@ -71,7 +70,7 @@ impl ConfigurationFolder {
                                     });
 
                                 let yaml_response_data_file_content: ResponseDataYaml =
-                                    from_str(&*file_content).unwrap_or_else(|_| {
+                                    from_str(&file_content).unwrap_or_else(|_| {
                                         panic!(
                                             "Could not decode response data yaml file '{}'",
                                             filename
