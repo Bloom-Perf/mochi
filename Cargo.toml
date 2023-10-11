@@ -13,7 +13,7 @@ serde_yaml = "0.9.25"
 axum = {version = "0.6.20", features =["headers", "macros"] }
 regex = "1.9.0"
 itertools = "0.11.0"
-axum-prometheus = "0.3.3"
+axum-prometheus = "0.4.0"
 anyhow = "1.0.75"
 fern = "0.6.2"
 log = "0.4.20"
