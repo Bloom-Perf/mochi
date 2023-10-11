@@ -25,7 +25,7 @@ RUN touch /usr/src/mochi/src/main.rs
 # This is the actual application build.
 RUN cargo build --target x86_64-unknown-linux-musl --release
 
-FROM --platform=linux/amd64 registry-docker.apps.eul.sncf.fr/hub/alpine:3.18
+FROM --platform=linux/amd64 alpine:3.18
 
 WORKDIR /usr/local/bin
 
