@@ -7,11 +7,12 @@ on:
 
 jobs:
   docker_publish:
+    name: "Docker Publish"
     runs-on: "ubuntu-22.04"
     permissions: write-all
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # https://github.com/marketplace/actions/push-to-ghcr
       - name: Build and publish a Docker image for ${{ github.repository }}
