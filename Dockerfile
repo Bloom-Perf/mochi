@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 rust:1.70-slim AS builder
+FROM --platform=linux/amd64 rust:1.73-slim AS builder
 WORKDIR /usr/src
 
 # Create blank project
