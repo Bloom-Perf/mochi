@@ -8,6 +8,7 @@ on:
 jobs:
   docker_publish:
     runs-on: "ubuntu-22.04"
+    permissions: write-all
 
     steps:
       - uses: actions/checkout@v2
