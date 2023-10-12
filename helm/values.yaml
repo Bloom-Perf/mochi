@@ -4,10 +4,10 @@ app: mochi
 replicaCount: 1
 
 image:
-  repository: "repository to change"
+  repository: ghcr.io/bloom-perf/mochi
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.0.1
+  tag: initial-release-2
 containerPort: 3000
 service:
   type: ClusterIP
