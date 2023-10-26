@@ -7,7 +7,7 @@ image:
   repository: ghcr.io/bloom-perf/mochi
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: initial-release-2
+  tag: initial-release-2@sha256:bd4c4c5ccb71398a349139cf7555d949fe3352e8e594cec62e5121261bd24856
 containerPort: 3000
 service:
   type: ClusterIP
