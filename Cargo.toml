@@ -12,7 +12,7 @@ serde_json = "1.0.108"
 serde_yaml = "0.9.27"
 axum = {version = "0.6.20", features =["headers", "macros"] }
 regex = "1.10.2"
-itertools = "0.11.0"
+itertools = "0.12.0"
 axum-prometheus = "0.4.0"
 anyhow = "1.0.75"
 fern = "0.6.2"
