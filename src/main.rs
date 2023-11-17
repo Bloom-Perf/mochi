@@ -13,14 +13,23 @@ use crate::routes::handle_request;
 
 use anyhow::{Context, Result};
 use axum::body::Body;
-use axum::http::Request;
+use axum::http::{Request, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, on, MethodFilter};
 use axum::Router;
 use axum_prometheus::PrometheusMetricLayer;
-use log::info;
+use log::{info, warn};
 use std::env;
 use std::net::SocketAddr;
 
+async fn handler404(request: Request<Body>) -> Response {
+    warn!(
+        "Request with route --- \n\t[{}] {}\n --- did not match any route of the configuration",
+        request.method(),
+        request.uri()
+    );
+    StatusCode::NOT_FOUND.into_response()
+}
 #[tokio::main]
 async fn main() -> Result<()> {
     setup_logger().context("Setup logger")?;
@@ -55,7 +64,8 @@ async fn main() -> Result<()> {
                             move |request: Request<Body>| handle_request(request, rules.to_owned())
                         }),
                     )
-                });
+                })
+                .fallback(handler404);
             r.merge(subrouter)
         })
         .route("/metrics", get(|| async move { metric_handle.render() }))
