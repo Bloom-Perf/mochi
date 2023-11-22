@@ -14,7 +14,7 @@ axum = {version = "0.6.20", features =["headers", "macros"] }
 regex = "1.10.2"
 itertools = "0.12.0"
 axum-otel-metrics = "0.7.0"
-opentelemetry = { version = "0.20.0"}
+opentelemetry = { version = "0.21.0"}
 anyhow = "1.0.75"
 fern = "0.6.2"
 log = "0.4.20"
