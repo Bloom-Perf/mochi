@@ -47,22 +47,17 @@ pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Res
     StatusCode::NOT_FOUND.into_response()
 }
 
-pub type RulesMap = HashMap<HttpRoute, Vec<RuleCore>>;
+pub type SystemRulesMap = HashMap<HttpRoute, Vec<RuleCore>>;
 
 impl SystemCore {
-    pub fn generate_rules_map(self) -> RulesMap {
-        let mut rules_map: RulesMap = HashMap::new();
+    pub fn generate_rules_map(self) -> SystemRulesMap {
+        let mut rules_map: SystemRulesMap = HashMap::new();
         for api_set in self.api_sets.into_iter() {
             for ApiCore(rules) in api_set.apis.into_iter() {
                 for rule in rules.into_iter() {
                     // dbg!(rule.clone());
                     let http_route = HttpRoute {
-                        route: format!(
-                            "/{}/{}{}",
-                            self.name,
-                            api_set.name,
-                            rule.endpoint.route.to_owned()
-                        ),
+                        route: format!("/{}{}", api_set.name, rule.endpoint.route.to_owned()),
                         method: rule.endpoint.method.to_owned(),
                     };
 
