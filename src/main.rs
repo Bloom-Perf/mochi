@@ -1,6 +1,7 @@
 mod extractor;
 mod file;
 mod logger;
+mod metrics;
 mod model;
 mod routes;
 
@@ -11,13 +12,14 @@ use crate::model::core::SystemCore;
 use crate::model::yaml::SystemFolder;
 use crate::routes::handle_request;
 
+use crate::metrics::MochiMetrics;
 use anyhow::{Context, Result};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, on, MethodFilter};
+use axum::routing::{on, MethodFilter};
 use axum::Router;
-use axum_prometheus::PrometheusMetricLayer;
+use axum_otel_metrics::HttpMetricsLayerBuilder;
 use log::{info, warn};
 use std::env;
 use std::net::SocketAddr;
@@ -34,10 +36,12 @@ async fn handler404(request: Request<Body>) -> Response {
 async fn main() -> Result<()> {
     setup_logger().context("Setup logger")?;
 
+    let metrics = HttpMetricsLayerBuilder::new().build();
+
     info!("Starting Mochi!");
 
     let configpath = env::var("CONFIG_PATH").unwrap_or("./config".to_string());
-    let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
+
     let system_folders: Vec<SystemFolder> = ConfigurationFolder::new(configpath).load_systems();
 
     let rules_maps: Vec<_> = system_folders
@@ -51,9 +55,12 @@ async fn main() -> Result<()> {
         })
         .collect();
 
-    let app: Router = rules_maps
+    let mochi_metrics = MochiMetrics {};
+    let initial_router = metrics.routes::<MochiMetrics>();
+
+    let app = rules_maps
         .into_iter()
-        .fold(Router::new(), move |r, map| {
+        .fold(initial_router, move |r, map| {
             let subrouter = map
                 .into_iter()
                 .fold(Router::new(), |acc, (endpoint, rules)| {
@@ -68,8 +75,8 @@ async fn main() -> Result<()> {
                 .fallback(handler404);
             r.merge(subrouter)
         })
-        .route("/metrics", get(|| async move { metric_handle.render() }))
-        .layer(prometheus_layer);
+        .layer(metrics)
+        .with_state(mochi_metrics.clone());
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
