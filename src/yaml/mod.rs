@@ -1,3 +1,6 @@
+pub(crate) mod from_files;
+pub(crate) mod to_domain;
+
 use serde::Deserialize;
 use std::collections::HashMap;
 

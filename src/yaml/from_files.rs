@@ -1,4 +1,4 @@
-use crate::model::yaml::{ApiShapeYaml, ApiYaml, ResponseDataYaml, SystemFolder};
+use crate::yaml::{ApiShapeYaml, ApiYaml, ResponseDataYaml, SystemFolder};
 use serde_yaml::from_str;
 use std::collections::HashMap;
 use std::fs;

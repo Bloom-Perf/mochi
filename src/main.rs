@@ -1,16 +1,15 @@
-mod extractor;
-mod file;
+mod core;
+mod http;
 mod logger;
 mod metrics;
-mod model;
-mod routes;
+mod yaml;
 
-use crate::extractor::build_all;
-use crate::file::ConfigurationFolder;
+use crate::core::SystemCore;
+use crate::http::routes::handle_request;
 use crate::logger::setup_logger;
-use crate::model::core::SystemCore;
-use crate::model::yaml::SystemFolder;
-use crate::routes::handle_request;
+use crate::yaml::from_files::ConfigurationFolder;
+use crate::yaml::to_domain::build_all;
+use crate::yaml::SystemFolder;
 
 use crate::metrics::MochiMetrics;
 use anyhow::{Context, Result};

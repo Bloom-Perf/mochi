@@ -1,7 +1,5 @@
-use crate::model::core::{ApiCore, ApiSetCore, EndpointCore, LatencyCore, RuleCore};
-use crate::model::yaml::{
-    ApiShapeYaml, ApiYaml, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
-};
+use crate::core::{ApiCore, ApiSetCore, EndpointCore, LatencyCore, RuleCore};
+use crate::yaml::{ApiShapeYaml, ApiYaml, LatencyYaml, Response, ResponseDataYaml, RuleYaml};
 use anyhow::{Context, Result};
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
@@ -19,14 +17,11 @@ fn extract_endpoint(s: &String) -> Result<EndpointCore> {
         s
     ))?;
 
-    let (_, [method, path]) = captured_result.extract();
-
-    let m = Method::from_str(method)?;
-    let p = PathAndQuery::from_str(path)?;
+    let (_, [method_raw, path_raw]) = captured_result.extract();
 
     Ok(EndpointCore {
-        route: p,
-        method: m,
+        route: PathAndQuery::from_str(path_raw)?,
+        method: Method::from_str(method_raw)?,
     })
 }
 
