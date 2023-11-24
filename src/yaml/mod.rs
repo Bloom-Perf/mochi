@@ -51,3 +51,8 @@ pub struct SystemFolder {
     pub apis: Vec<ApiYaml>,
     pub data: HashMap<String, ResponseDataYaml>,
 }
+
+#[derive(Clone, Debug)]
+pub struct ConfFolder {
+    pub systems: Vec<SystemFolder>,
+}

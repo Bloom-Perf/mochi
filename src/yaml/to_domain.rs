@@ -1,5 +1,7 @@
-use crate::core::{ApiCore, ApiSetCore, EndpointCore, LatencyCore, RuleCore};
-use crate::yaml::{ApiShapeYaml, ApiYaml, LatencyYaml, Response, ResponseDataYaml, RuleYaml};
+use crate::core::{ApiCore, ApiSetCore, ConfCore, EndpointCore, LatencyCore, RuleCore, SystemCore};
+use crate::yaml::{
+    ApiShapeYaml, ApiYaml, ConfFolder, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
+};
 use anyhow::{Context, Result};
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
@@ -77,7 +79,7 @@ fn extract_api(api: &ApiYaml, data: &HashMap<String, ResponseDataYaml>) -> Resul
         .map(|r| extract_rule(r, api.latency.clone(), api.headers.clone(), data.clone()))
         .collect();
 
-    extracted_rules.map(ApiCore)
+    Ok(ApiCore(extracted_rules?))
 }
 
 fn extract_api_shape(api_shape: &ApiShapeYaml) -> Result<Vec<EndpointCore>> {
@@ -87,33 +89,47 @@ fn extract_api_shape(api_shape: &ApiShapeYaml) -> Result<Vec<EndpointCore>> {
     extracted_endpoints
 }
 
-fn build(
-    name: String,
-    shape: Option<ApiShapeYaml>,
-    apis: Vec<ApiYaml>,
+pub fn build_all_api_sets(
+    shapes: &[ApiShapeYaml],
+    apis: &[ApiYaml],
     data: &HashMap<String, ResponseDataYaml>,
-) -> Result<ApiSetCore> {
-    let apis: Result<Vec<ApiCore>> = apis.iter().map(|api| extract_api(api, data)).collect();
-    // TODO: Validate with shape
-
-    Ok(ApiSetCore {
-        name,
-        shape: shape.and_then(|shape_yaml| extract_api_shape(&shape_yaml).ok()),
-        apis: apis.context("Extracting apis".to_string())?,
-    })
-}
-
-pub fn build_all(
-    shapes: Vec<ApiShapeYaml>,
-    apis: Vec<ApiYaml>,
-    data: HashMap<String, ResponseDataYaml>,
 ) -> Result<Vec<ApiSetCore>> {
-    apis.into_iter()
-        .into_group_map_by(|x| x.name.to_owned())
+    apis.iter()
+        .group_by(|x| x.name.to_owned())
         .into_iter()
         .map(|(key, values)| {
-            let may_be_shape = shapes.clone().into_iter().find(|s| s.name.eq(&*key));
-            build(key, may_be_shape, values, &data)
+            let may_be_shape = shapes.iter().find(|s| s.name.eq(&*key));
+            let apis: Result<Vec<ApiCore>> = values
+                .collect::<Vec<_>>()
+                .iter()
+                .map(|api| extract_api(api, data))
+                .collect();
+            // TODO: Validate with shape
+
+            Ok(ApiSetCore {
+                name: key,
+                shape: may_be_shape.and_then(|shape_yaml| extract_api_shape(shape_yaml).ok()),
+                apis: apis.context("Extracting apis".to_string())?,
+            })
         })
         .collect()
+}
+
+impl ConfFolder {
+    pub fn extract(&self) -> Result<ConfCore> {
+        let system_cores: Result<Vec<SystemCore>> = self
+            .systems
+            .iter()
+            .map(|system| {
+                Ok(SystemCore {
+                    name: system.name.to_owned(),
+                    api_sets: build_all_api_sets(&system.shapes, &system.apis, &system.data)?,
+                })
+            })
+            .collect();
+
+        Ok(ConfCore {
+            systems: system_cores?,
+        })
+    }
 }

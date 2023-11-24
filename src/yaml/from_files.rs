@@ -1,4 +1,4 @@
-use crate::yaml::{ApiShapeYaml, ApiYaml, ResponseDataYaml, SystemFolder};
+use crate::yaml::{ApiShapeYaml, ApiYaml, ConfFolder, ResponseDataYaml, SystemFolder};
 use serde_yaml::from_str;
 use std::collections::HashMap;
 use std::fs;
@@ -12,7 +12,7 @@ impl ConfigurationFolder {
         ConfigurationFolder { folder: conf_path }
     }
 
-    pub fn load_systems(&self) -> Vec<SystemFolder> {
+    pub fn load_from_filesystem(&self) -> ConfFolder {
         let conf_dir = fs::read_dir(self.folder.clone())
             .unwrap_or_else(|_| panic!("Could not read configuration folder '{}'", self.folder));
 
@@ -130,6 +130,8 @@ impl ConfigurationFolder {
             })
             .collect();
 
-        system_folders
+        ConfFolder {
+            systems: system_folders,
+        }
     }
 }

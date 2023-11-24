@@ -38,3 +38,14 @@ pub struct SystemCore {
     pub name: String,
     pub api_sets: Vec<ApiSetCore>,
 }
+
+#[derive(Clone, Debug)]
+pub struct ConfCore {
+    pub systems: Vec<SystemCore>,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct HttpRoute {
+    pub route: String,
+    pub method: Method,
+}
