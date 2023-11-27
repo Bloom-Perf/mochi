@@ -1,5 +1,5 @@
 use crate::core::{ApiCore, ConfCore, HttpRoute, LatencyCore, RuleCore, SystemCore};
-use axum::body::{Body, BoxBody};
+use axum::body::Body;
 use axum::http::{Request, StatusCode};
 
 use crate::metrics::MochiMetrics;
@@ -18,7 +18,7 @@ async fn compute_latency(latency: LatencyCore) {
     }
 }
 
-pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Response<BoxBody> {
+pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Response<Body> {
     for rule in rules.iter() {
         dbg!(rule.clone());
         // All api headers must match the corresponding headers in the received request
@@ -36,7 +36,6 @@ pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Res
             }
 
             let body = rule.body.clone().map(Body::from).unwrap_or(Body::empty());
-            let body = axum::body::boxed(body);
             return Response::builder()
                 .header("Content-Type", rule.format.to_owned())
                 .status(rule.status)

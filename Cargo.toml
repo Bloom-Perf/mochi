@@ -10,11 +10,12 @@ tokio = { version = "1.34.0", features = ["full"] }
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 serde_yaml = "0.9.27"
-axum = {version = "0.6.20", features =["headers", "macros"] }
+axum = {version = "0.7.1", features = ["macros"] }
+axum-extra = "0.9.0"
 regex = "1.10.2"
 itertools = "0.12.0"
-axum-otel-metrics = "0.7.0"
-opentelemetry = { version = "0.20.0"}
+axum-otel-metrics = "0.8.0"
+opentelemetry = { version = "0.21.0"}
 anyhow = "1.0.75"
 fern = "0.6.2"
 log = "0.4.20"

@@ -14,6 +14,7 @@ use axum_otel_metrics::HttpMetricsLayerBuilder;
 use log::info;
 use std::env;
 use std::net::SocketAddr;
+use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -42,8 +43,9 @@ async fn main() -> Result<()> {
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let tcp_listener = TcpListener::bind(addr).await?;
+
+    axum::serve(tcp_listener, app.into_make_service())
         .await
         .context("Starting http server")
 }
