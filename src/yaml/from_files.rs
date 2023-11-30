@@ -66,7 +66,7 @@ impl ConfigurationFolder {
             .iter_files()?
             .into_iter()
             .filter_map(|file| -> Option<ApiYaml> {
-                from_str(&*file.content)
+                from_str(&file.content)
                     .context(format!("Failed to decode api \"{}\"", file.path.display()))
                     .ok()
             })
@@ -76,7 +76,7 @@ impl ConfigurationFolder {
             .iter_files()?
             .into_iter()
             .filter_map(|file| -> Option<ApiShapeYaml> {
-                from_str(&*file.content)
+                from_str(&file.content)
                     .context(format!(
                         "Failed to decode api shape \"{}\"",
                         file.path.display()
