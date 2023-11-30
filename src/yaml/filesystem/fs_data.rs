@@ -16,7 +16,7 @@ impl FsData {
         fs::read_dir(self.folder.clone())
             .context(format!(
                 "Could not read data directory for system '{}'",
-                self.folder.display().to_string()
+                self.folder.display()
             ))?
             // Keeps files only
             .filter_map(|i| i.ok())
@@ -26,10 +26,8 @@ impl FsData {
 
                 Ok(FsDataFile::new(
                     path.clone(),
-                    fs::read_to_string(entity.path()).context(format!(
-                        "Could not read system file '{}'",
-                        path.display().to_string()
-                    ))?,
+                    fs::read_to_string(entity.path())
+                        .context(format!("Could not read data file '{}'", path.display()))?,
                 ))
             })
             .collect()

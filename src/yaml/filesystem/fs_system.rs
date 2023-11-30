@@ -22,7 +22,7 @@ impl FsSystem {
         Ok(fs::read_dir(self.folder.clone())
             .context(format!(
                 "Could not read directory for system '{}'",
-                self.folder.display().to_string()
+                self.folder.display()
             ))?
             .filter_map(|e| e.ok())
             .collect::<Vec<_>>())
@@ -43,7 +43,7 @@ impl FsSystem {
         if fs_data.is_none() {
             warn!(
                 "No data folder found for system \"{}\"",
-                self.folder.display().to_string()
+                self.folder.display()
             );
         }
 
@@ -60,10 +60,8 @@ impl FsSystem {
 
                 Ok(FsSystemFile::new(
                     path.clone(),
-                    fs::read_to_string(entity.path()).context(format!(
-                        "Could not read system file '{}'",
-                        path.display().to_string()
-                    ))?,
+                    fs::read_to_string(entity.path())
+                        .context(format!("Could not read system file '{}'", path.display()))?,
                 ))
             })
             .collect()

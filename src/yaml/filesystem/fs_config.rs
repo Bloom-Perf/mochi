@@ -15,7 +15,7 @@ impl FsConfig {
     pub fn iter_systems(&self) -> Result<Vec<FsSystem>> {
         let conf_dir = fs::read_dir(self.folder.clone()).context(format!(
             "Could not read configuration folder '{}'",
-            self.folder.display().to_string()
+            self.folder.display()
         ))?;
 
         Ok(conf_dir
