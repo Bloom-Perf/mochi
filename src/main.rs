@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
 
     let configpath = env::var("CONFIG_PATH").unwrap_or("./config".to_string());
 
-    let conf_folder: ConfFolder = ConfigurationFolder::new(configpath).load_from_filesystem();
+    let conf_folder: ConfFolder = ConfigurationFolder::new(configpath).load_from_filesystem()?;
 
     let repr = conf_folder.extract()?;
 

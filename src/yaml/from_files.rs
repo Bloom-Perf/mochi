@@ -1,137 +1,106 @@
+use crate::yaml::filesystem::fs_config::FsConfig;
+use crate::yaml::filesystem::fs_data::FsData;
+use crate::yaml::filesystem::fs_data_file::FsDataFile;
+use crate::yaml::filesystem::fs_system::FsSystem;
 use crate::yaml::{ApiShapeYaml, ApiYaml, ConfFolder, ResponseDataYaml, SystemFolder};
+use anyhow::{Context, Result};
 use serde_yaml::from_str;
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 
 pub struct ConfigurationFolder {
     folder: String,
 }
 
 impl ConfigurationFolder {
-    pub fn new(conf_path: String) -> ConfigurationFolder {
-        ConfigurationFolder { folder: conf_path }
+    pub fn new(path: String) -> ConfigurationFolder {
+        ConfigurationFolder { folder: path }
+    }
+    pub(self) fn load_fs_data_file(fs_data_file: FsDataFile) -> Result<(String, ResponseDataYaml)> {
+        let filename = fs_data_file
+            .path
+            .file_name()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap();
+
+        let file_content = fs::read_to_string(fs_data_file.path)
+            .context(format!("Could not read data file '{}'", filename))?;
+
+        let yaml_response_data_file_content: ResponseDataYaml = from_str(&file_content).context(
+            format!("Could not decode response data yaml file '{}'", filename),
+        )?;
+
+        // Skip .yml suffix
+        let truncated_filename = &filename[..(filename.len() - 4)];
+
+        Ok((
+            truncated_filename.to_string(),
+            yaml_response_data_file_content,
+        ))
+    }
+    pub(self) fn load_fs_data(fs_data: FsData) -> Result<HashMap<String, ResponseDataYaml>> {
+        fs_data
+            .iter_files()?
+            .into_iter()
+            .map(ConfigurationFolder::load_fs_data_file)
+            .collect()
     }
 
-    pub fn load_from_filesystem(&self) -> ConfFolder {
-        let conf_dir = fs::read_dir(self.folder.clone())
-            .unwrap_or_else(|_| panic!("Could not read configuration folder '{}'", self.folder));
+    pub(self) fn load_fs_system(fs_system: FsSystem) -> Result<SystemFolder> {
+        let data = fs_system
+            .get_data_folder()?
+            .map(ConfigurationFolder::load_fs_data)
+            .unwrap_or(Ok(HashMap::new()))?;
 
-        //
-        let system_folders: Vec<SystemFolder> = conf_dir
-            // Just keep directories
-            .filter_map(|e| e.ok())
-            .filter(|entity| entity.metadata().map(|m| m.is_dir()).unwrap_or(false))
-            .map(|system_path| {
-                let system_name = system_path
-                    .path()
-                    .file_name()
-                    .unwrap_or_else(|| panic!("Could not get system name"))
-                    .to_os_string()
-                    .into_string()
-                    .unwrap();
-
-                // Entries loaded per system folder (./config/system/*)
-                let system_entries = fs::read_dir(system_path.path())
-                    .unwrap_or_else(|_| {
-                        panic!("Could not read directory for system '{}'", system_name)
-                    })
-                    .filter_map(|e| e.ok())
-                    .collect::<Vec<_>>();
-
-                // data directory of the current system folder (./config/system/data/)
-                let system_data_dir = system_entries
-                    .iter()
-                    // Keeps files only
-                    .filter(|entity| {
-                        entity.file_name() == "data"
-                            && entity.metadata().map(|m| m.is_dir()).unwrap_or(false)
-                    })
-                    .collect::<Vec<_>>();
-
-                // Content of data/*.yml
-                let system_data_files: HashMap<String, ResponseDataYaml> = system_data_dir
-                    .first()
-                    .map(|data_path| {
-                        fs::read_dir(data_path.path())
-                            .unwrap_or_else(|_| {
-                                panic!("Could not read data directory for system '{}'", system_name)
-                            })
-                            // Keeps files only
-                            .filter_map(|i| i.ok())
-                            .filter(|entity| {
-                                entity.metadata().map(|m| m.is_file()).unwrap_or(false)
-                            })
-                            .map(|entity| {
-                                let filename = entity.file_name().into_string().unwrap();
-
-                                let file_content = fs::read_to_string(entity.path())
-                                    .unwrap_or_else(|_| {
-                                        panic!("Could not read file '{}'", filename)
-                                    });
-
-                                let yaml_response_data_file_content: ResponseDataYaml =
-                                    from_str(&file_content).unwrap_or_else(|_| {
-                                        panic!(
-                                            "Could not decode response data yaml file '{}'",
-                                            filename
-                                        )
-                                    });
-
-                                // Skip .yml suffix
-                                let truncated_filename = &filename[..(filename.len() - 4)];
-
-                                (
-                                    truncated_filename.to_string(),
-                                    yaml_response_data_file_content,
-                                )
-                            })
-                            .collect()
-                    })
-                    .unwrap_or(HashMap::new());
-
-                let system_files: Vec<(String, String)> = system_entries
-                    .iter()
-                    // Keeps files only
-                    .filter(|entity| entity.metadata().map(|m| m.is_file()).unwrap_or(false))
-                    .map(|entity| {
-                        let filename = entity.file_name().into_string().unwrap();
-
-                        (
-                            filename.clone(),
-                            fs::read_to_string(entity.path()).unwrap_or_else(|_| {
-                                panic!("Could not read file '{}'", filename.clone())
-                            }),
-                        )
-                    })
-                    .collect();
-
-                let apis: Vec<ApiYaml> = system_files
-                    .iter()
-                    .filter_map(|(_filename, filecontent)| {
-                        let r: serde_yaml::Result<ApiYaml> = from_str(filecontent);
-                        r.ok()
-                    })
-                    .collect();
-
-                let shapes: Vec<ApiShapeYaml> = system_files
-                    .iter()
-                    .filter_map(|(_filename, filecontent)| {
-                        let r: serde_yaml::Result<ApiShapeYaml> = from_str(filecontent);
-                        r.ok()
-                    })
-                    .collect();
-
-                SystemFolder {
-                    name: system_name,
-                    apis,
-                    shapes,
-                    data: system_data_files,
-                }
+        let apis: Vec<ApiYaml> = fs_system
+            .iter_files()?
+            .into_iter()
+            .filter_map(|file| -> Option<ApiYaml> {
+                from_str(&*file.content)
+                    .context(format!("Failed to decode api \"{}\"", file.path.display()))
+                    .ok()
             })
             .collect();
 
-        ConfFolder {
-            systems: system_folders,
-        }
+        let shapes: Vec<ApiShapeYaml> = fs_system
+            .iter_files()?
+            .into_iter()
+            .filter_map(|file| -> Option<ApiShapeYaml> {
+                from_str(&*file.content)
+                    .context(format!(
+                        "Failed to decode api shape \"{}\"",
+                        file.path.display()
+                    ))
+                    .ok()
+            })
+            .collect();
+
+        Ok(SystemFolder {
+            name: fs_system
+                .folder
+                .file_name()
+                .unwrap()
+                .to_os_string()
+                .into_string()
+                .unwrap(),
+            apis,
+            shapes,
+            data,
+        })
+    }
+    pub fn load_from_filesystem(&self) -> Result<ConfFolder> {
+        let conf_path = PathBuf::from(self.folder.clone());
+        let fs_config = FsConfig::new(conf_path);
+
+        Ok(ConfFolder {
+            systems: fs_config
+                .iter_systems()?
+                .into_iter()
+                .filter_map(|system| ConfigurationFolder::load_fs_system(system).ok())
+                .collect(),
+        })
     }
 }
