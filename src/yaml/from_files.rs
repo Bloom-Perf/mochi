@@ -6,6 +6,7 @@ use crate::yaml::{ApiShapeYaml, ApiYaml, ConfFolder, ResponseDataYaml, SystemFol
 use anyhow::{Context, Result};
 use serde_yaml::from_str;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 
@@ -18,23 +19,27 @@ impl ConfigurationFolder {
         ConfigurationFolder { folder: path }
     }
     pub(self) fn load_fs_data_file(fs_data_file: FsDataFile) -> Result<(String, ResponseDataYaml)> {
-        let filename = fs_data_file
+        let filename_key = fs_data_file
             .path
-            .file_name()
-            .unwrap()
-            .to_os_string()
+            .iter()
+            .skip_while(|p| !p.eq_ignore_ascii_case(FsData::FOLDER))
+            .skip(1)
+            .collect::<Vec<&OsStr>>()
+            .join("/".as_ref())
             .into_string()
             .unwrap();
 
         let file_content = fs::read_to_string(fs_data_file.path)
-            .context(format!("Could not read data file '{}'", filename))?;
+            .context(format!("Could not read data file '{}'", filename_key))?;
 
-        let yaml_response_data_file_content: ResponseDataYaml = from_str(&file_content).context(
-            format!("Could not decode response data yaml file '{}'", filename),
-        )?;
+        let yaml_response_data_file_content: ResponseDataYaml =
+            from_str(&file_content).context(format!(
+                "Could not decode response data yaml file '{}'",
+                filename_key
+            ))?;
 
         // Skip .yml suffix
-        let truncated_filename = &filename[..(filename.len() - 4)];
+        let truncated_filename = &filename_key[..(filename_key.len() - 4)];
 
         Ok((
             truncated_filename.to_string(),
@@ -54,6 +59,8 @@ impl ConfigurationFolder {
             .get_data_folder()?
             .map(ConfigurationFolder::load_fs_data)
             .unwrap_or(Ok(HashMap::new()))?;
+
+        dbg!(data.clone());
 
         let apis: Vec<ApiYaml> = fs_system
             .iter_files()?
@@ -80,7 +87,7 @@ impl ConfigurationFolder {
 
         Ok(SystemFolder {
             name: fs_system
-                .folder
+                .path
                 .file_name()
                 .unwrap()
                 .to_os_string()

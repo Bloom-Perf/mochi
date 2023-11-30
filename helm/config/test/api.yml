@@ -7,3 +7,7 @@ rules:
     response: !File first
   - matches: PATCH /test/second
     response: !File second
+  - matches: GET /test/third
+    response: !File sub/third
+  - matches: GET /test/fourth
+    response: !File sub/sub2/fourth

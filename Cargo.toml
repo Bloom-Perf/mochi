@@ -19,3 +19,4 @@ opentelemetry = { version = "0.21.0"}
 anyhow = "1.0.75"
 fern = "0.6.2"
 log = "0.4.20"
+walkdir = "2.4.0"

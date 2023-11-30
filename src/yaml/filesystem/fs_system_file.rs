@@ -1,3 +1,5 @@
+use anyhow::{Context, Result};
+use std::fs;
 use std::path::PathBuf;
 
 pub struct FsSystemFile {
@@ -6,7 +8,11 @@ pub struct FsSystemFile {
 }
 
 impl FsSystemFile {
-    pub fn new(path: PathBuf, content: String) -> FsSystemFile {
-        FsSystemFile { path, content }
+    pub fn from(path: PathBuf) -> Result<FsSystemFile> {
+        Ok(FsSystemFile {
+            path: path.clone(),
+            content: fs::read_to_string(path.clone())
+                .context(format!("Could not read data file '{}'", path.display()))?,
+        })
     }
 }

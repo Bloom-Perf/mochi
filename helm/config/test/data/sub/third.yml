@@ -1,0 +1,7 @@
+status: 302
+description: "Endpoint de test 3"
+format: application/json
+data: |
+  {
+    "test": "3"
+  }

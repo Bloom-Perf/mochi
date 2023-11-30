@@ -1,35 +1,25 @@
 use crate::yaml::filesystem::fs_data_file::FsDataFile;
-use anyhow::{Context, Result};
-use std::fs;
+use anyhow::Result;
 use std::path::PathBuf;
+use walkdir::WalkDir;
 
 pub struct FsData {
-    pub folder: PathBuf,
+    pub path: PathBuf,
 }
 
 impl FsData {
+    pub const FOLDER: &'static str = "data";
     pub fn new(path: PathBuf) -> FsData {
-        FsData { folder: path }
+        FsData { path }
     }
 
     pub fn iter_files(&self) -> Result<Vec<FsDataFile>> {
-        fs::read_dir(self.folder.clone())
-            .context(format!(
-                "Could not read data directory for system '{}'",
-                self.folder.display()
-            ))?
+        WalkDir::new(self.path.clone())
+            .into_iter()
             // Keeps files only
             .filter_map(|i| i.ok())
             .filter(|entity| entity.metadata().map(|m| m.is_file()).unwrap_or(false))
-            .map(|entity| {
-                let path = entity.path();
-
-                Ok(FsDataFile::new(
-                    path.clone(),
-                    fs::read_to_string(entity.path())
-                        .context(format!("Could not read data file '{}'", path.display()))?,
-                ))
-            })
+            .map(|entity| FsDataFile::from(entity.path().to_path_buf()))
             .collect()
     }
 }
