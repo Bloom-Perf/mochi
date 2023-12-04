@@ -573,6 +573,7 @@ dependencies = [
  "axum-extra",
  "axum-otel-metrics",
  "fern",
+ "http-body-util",
  "itertools",
  "log",
  "opentelemetry",
@@ -581,6 +582,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "tokio",
+ "tower",
  "walkdir",
 ]
 

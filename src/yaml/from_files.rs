@@ -68,6 +68,7 @@ impl ConfigurationFolder {
             .filter_map(|file| -> Option<ApiYaml> {
                 from_str(&file.content)
                     .context(format!("Failed to decode api \"{}\"", file.path.display()))
+                    .map_err(|e| dbg!(e))
                     .ok()
             })
             .collect();
