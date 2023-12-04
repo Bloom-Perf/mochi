@@ -1,0 +1,4 @@
+status: 400
+description: "Endpoint de test"
+format: application/text
+data: error

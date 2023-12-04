@@ -1,0 +1,6 @@
+name: mvp
+headers:
+  USER: error
+rules:
+  - matches: POST  /route1
+    response: !File response

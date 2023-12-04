@@ -24,5 +24,5 @@ pub fn setup_app(conf_path: String) -> Result<Router<()>> {
     Ok(core_representation
         .build_router(initial_router)
         .layer(metrics_layer)
-        .with_state(mochi_metrics.clone()))
+        .with_state(mochi_metrics))
 }

@@ -1,0 +1,7 @@
+status: 303
+description: "Endpoint de test"
+format: application/json
+data: |
+  {
+    "test": "2"
+  }

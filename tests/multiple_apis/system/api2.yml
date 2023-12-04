@@ -1,0 +1,7 @@
+name: mvp2
+headers: {}
+rules:
+  - matches: GET  /route1
+    response: !Inline [200, "content", "text/plain"]
+  - matches: DELETE /route2
+    response: !File response

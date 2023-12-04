@@ -1,0 +1,6 @@
+name: mvp
+headers:
+  USER: success
+rules:
+  - matches: POST  /route1
+    response: !Inline [200, "content", "text/plain"]
