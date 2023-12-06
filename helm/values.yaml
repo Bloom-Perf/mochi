@@ -1,4 +1,4 @@
-namespace: namespace
+namespace: bloom-perf
 app: mochi
 
 replicaCount: 1
@@ -29,7 +29,6 @@ ingress:
   paths:
     - path: /mochi(/|$)(.*)
 
-imagePullSecrets: "image pull secret to change"
 nameOverride: ""
 fullnameOverride: ""
 
