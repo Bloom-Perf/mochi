@@ -11,7 +11,7 @@ serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 serde_yaml = "0.9.27"
 axum = {version = "0.7.2", features = ["macros"] }
-axum-extra = "0.9.0"
+axum-extra = { version = "0.9.0", features = ["query"] }
 regex = "1.10.2"
 itertools = "0.12.0"
 axum-otel-metrics = "0.8.0"
@@ -20,5 +20,7 @@ anyhow = "1.0.75"
 fern = "0.6.2"
 log = "0.4.20"
 walkdir = "2.4.0"
+handlebars = "5.0.0-beta.5"
 tower = "0.4.13"
 http-body-util = "0.1.0"
+indoc = "2.0.4"

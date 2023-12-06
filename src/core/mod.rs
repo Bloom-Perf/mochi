@@ -18,13 +18,31 @@ pub struct ApiSetCore {
 }
 
 #[derive(Clone, Debug)]
+pub struct RuleContentFeaturesCore {
+    pub headers: bool,
+    pub url_path: bool,
+    pub url_query: bool,
+}
+
+#[derive(Clone, Debug)]
+pub enum RuleBodyCore {
+    Plain(String),
+    Templated {
+        headers: bool,
+        url_path: bool,
+        url_query: bool,
+        content: String,
+    },
+}
+
+#[derive(Clone, Debug)]
 pub struct RuleCore {
     pub endpoint: EndpointCore,
     pub headers: HashMap<String, String>,
     pub latency: Option<LatencyCore>,
     pub status: StatusCode,
     pub format: String,
-    pub body: Option<String>,
+    pub body: Option<RuleBodyCore>,
 }
 
 #[derive(Clone, Debug)]

@@ -1,0 +1,5 @@
+name: mvp
+headers: {}
+rules:
+  - matches: POST /route/:path_param
+    response: !File response

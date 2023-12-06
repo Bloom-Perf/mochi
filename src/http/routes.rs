@@ -1,13 +1,16 @@
-use crate::core::{ApiCore, ConfCore, HttpRoute, LatencyCore, RuleCore, SystemCore};
+use crate::core::{ApiCore, ConfCore, HttpRoute, LatencyCore, RuleBodyCore, RuleCore, SystemCore};
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 
 use crate::metrics::MochiMetrics;
 use axum::extract::State;
+use axum::extract::{FromRequest, Path, Query};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{on, MethodFilter};
 use axum::Router;
+use handlebars::Handlebars;
 use log::warn;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -18,9 +21,65 @@ async fn compute_latency(latency: LatencyCore) {
     }
 }
 
+async fn generate_response_body(
+    request: Request<Body>,
+    rule_body_core: Option<RuleBodyCore>,
+) -> Body {
+    match rule_body_core {
+        None => Body::empty(),
+        Some(RuleBodyCore::Plain(content)) => Body::from(content),
+        Some(RuleBodyCore::Templated {
+            content,
+            url_path,
+            url_query,
+            headers,
+        }) => {
+            let json_headers: Option<Value> = if headers {
+                Some(json!(request
+                    .headers()
+                    .iter()
+                    .map(|(key, value)| (key.to_string(), value.to_str().unwrap().to_string()))
+                    .collect::<HashMap<String, String>>()))
+            } else {
+                None
+            };
+
+            let url_query_params: Option<Value> = if url_query {
+                let Query(query_params): Query<HashMap<String, String>> =
+                    Query::try_from_uri(request.uri()).unwrap();
+                Some(json!(query_params))
+            } else {
+                None
+            };
+
+            let url_path_params: Option<Value> = if url_path {
+                let Path(path_params): Path<HashMap<String, String>> =
+                    Path::from_request(request, &()).await.unwrap();
+                Some(json!(path_params))
+            } else {
+                None
+            };
+
+            Body::from(
+                Handlebars::new()
+                    .render_template(
+                        content.as_str(),
+                        &json!({
+                            "headers": json_headers,
+                            "url": {
+                                "query": url_query_params,
+                                "path": url_path_params,
+                            }
+                        }),
+                    )
+                    .unwrap(),
+            )
+        }
+    }
+}
+
 pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Response<Body> {
     for rule in rules.iter() {
-        dbg!(rule.clone());
         // All api headers must match the corresponding headers in the received request
         let matching_request = rule.headers.iter().all(|(key, value)| {
             request
@@ -31,11 +90,12 @@ pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Res
         });
 
         if matching_request {
-            if let Some(value) = rule.clone().latency {
+            if let Some(value) = rule.latency.clone() {
                 compute_latency(value).await
-            }
+            };
 
-            let body = rule.body.clone().map(Body::from).unwrap_or(Body::empty());
+            let body = generate_response_body(request, rule.body.clone()).await;
+
             return Response::builder()
                 .header("Content-Type", rule.format.to_owned())
                 .status(rule.status)

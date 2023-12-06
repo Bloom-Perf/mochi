@@ -5,8 +5,7 @@ data: |
   {
     "static": "2",
     "headers.header": "{{headers.header}}",
-    "headers.host": "{{headers.host}}",
-    "url.query.foo": {{#if url.query.foo }} "{{url.query.foo}}" {{else}} "none" {{/if}},
-    "url.path.foo": "{{ url.path.foo }}",
+    "url.query.foo": {{#if url.query.foo }}"{{url.query.foo}}"{{else}}"none"{{/if}},
+    "url.path.path_param": "{{ url.path.path_param }}",
     "unknown parameter url.test.test": "{{url.test.test}}"
   }
