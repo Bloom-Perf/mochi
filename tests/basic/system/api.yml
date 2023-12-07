@@ -1,5 +1,3 @@
-name: mvp
-headers: {}
 rules:
   - matches: POST  /route
     response: !Inline [200, "content", "text/plain"]

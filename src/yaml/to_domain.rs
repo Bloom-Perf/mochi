@@ -1,5 +1,6 @@
 use crate::core::{
-    ApiCore, ApiSetCore, ConfCore, EndpointCore, LatencyCore, RuleBodyCore, RuleCore, SystemCore,
+    ApiCore, ApiSetCore, ApiSetRootCore, ConfCore, EndpointCore, LatencyCore, RuleBodyCore,
+    RuleCore, SystemCore,
 };
 use crate::yaml::{
     ApiShapeYaml, ApiYaml, ConfFolder, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
@@ -7,7 +8,6 @@ use crate::yaml::{
 use anyhow::{Context, Result};
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
-use itertools::Itertools;
 use regex::Regex;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -105,7 +105,14 @@ fn extract_api(api: &ApiYaml, data: &HashMap<String, ResponseDataYaml>) -> Resul
     let extracted_rules: Result<Vec<RuleCore>> = api
         .rules
         .iter()
-        .map(|r| extract_rule(r, api.latency.clone(), api.headers.clone(), data.clone()))
+        .map(|r| {
+            extract_rule(
+                r,
+                api.latency.clone(),
+                api.headers.clone().unwrap_or(HashMap::new()),
+                data.clone(),
+            )
+        })
         .collect();
 
     Ok(ApiCore(extracted_rules?))
@@ -118,30 +125,44 @@ fn extract_api_shape(api_shape: &ApiShapeYaml) -> Result<Vec<EndpointCore>> {
     extracted_endpoints
 }
 
-pub fn build_all_api_sets(
-    shapes: &[ApiShapeYaml],
+pub fn build_api_set(
+    name: String,
+    shape: &Option<ApiShapeYaml>,
     apis: &[ApiYaml],
     data: &HashMap<String, ResponseDataYaml>,
-) -> Result<Vec<ApiSetCore>> {
-    apis.iter()
-        .group_by(|x| x.name.to_owned())
-        .into_iter()
-        .map(|(key, values)| {
-            let may_be_shape = shapes.iter().find(|s| s.name.eq(&*key));
-            let apis: Result<Vec<ApiCore>> = values
-                .collect::<Vec<_>>()
-                .iter()
-                .map(|api| extract_api(api, data))
-                .collect();
-            // TODO: Validate with shape
+) -> Result<ApiSetCore> {
+    let shape_core = match shape {
+        Some(s) => Some(extract_api_shape(&s)?),
+        None => None,
+    };
 
-            Ok(ApiSetCore {
-                name: key,
-                shape: may_be_shape.and_then(|shape_yaml| extract_api_shape(shape_yaml).ok()),
-                apis: apis.context("Extracting apis".to_string())?,
-            })
-        })
-        .collect()
+    let apis_core: Result<Vec<ApiCore>> = apis.iter().map(|api| extract_api(api, data)).collect();
+    // TODO: Validate with shape
+
+    Ok(ApiSetCore {
+        name,
+        shape: shape_core,
+        apis: apis_core?,
+    })
+}
+
+pub fn build_root_api_set(
+    shape: &Option<ApiShapeYaml>,
+    apis: &[ApiYaml],
+    data: &HashMap<String, ResponseDataYaml>,
+) -> Result<ApiSetRootCore> {
+    let shape_core = match shape {
+        Some(s) => Some(extract_api_shape(&s)?),
+        None => None,
+    };
+
+    let apis_core: Result<Vec<ApiCore>> = apis.iter().map(|api| extract_api(api, data)).collect();
+    // TODO: Validate with shape
+
+    Ok(ApiSetRootCore {
+        shape: shape_core,
+        apis: apis_core?,
+    })
 }
 
 impl ConfFolder {
@@ -150,9 +171,26 @@ impl ConfFolder {
             .systems
             .iter()
             .map(|system| {
+                let root_api_set = build_root_api_set(&system.shape, &system.apis, &system.data)?;
+
+                let api_sets = system
+                    .api_folders
+                    .iter()
+                    .map(|f| {
+                        // Merge data folder with the system data folder as a fallback
+                        let merged_data_folders = f
+                            .data
+                            .clone()
+                            .into_iter()
+                            .chain(system.data.clone())
+                            .collect();
+                        build_api_set(f.name.clone(), &f.shape, &f.apis, &merged_data_folders)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
                 Ok(SystemCore {
                     name: system.name.to_owned(),
-                    api_sets: build_all_api_sets(&system.shapes, &system.apis, &system.data)?,
+                    root_api_set,
+                    api_sets,
                 })
             })
             .collect();

@@ -18,6 +18,12 @@ pub struct ApiSetCore {
 }
 
 #[derive(Clone, Debug)]
+pub struct ApiSetRootCore {
+    pub shape: Option<Vec<EndpointCore>>,
+    pub apis: Vec<ApiCore>,
+}
+
+#[derive(Clone, Debug)]
 pub struct RuleContentFeaturesCore {
     pub headers: bool,
     pub url_path: bool,
@@ -54,6 +60,7 @@ pub struct EndpointCore {
 #[derive(Clone, Debug)]
 pub struct SystemCore {
     pub name: String,
+    pub root_api_set: ApiSetRootCore,
     pub api_sets: Vec<ApiSetCore>,
 }
 

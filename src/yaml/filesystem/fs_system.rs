@@ -1,3 +1,4 @@
+use crate::yaml::filesystem::fs_api::FsApi;
 use crate::yaml::filesystem::fs_data::FsData;
 use crate::yaml::filesystem::fs_system_file::FsSystemFile;
 use anyhow::{Context, Result};
@@ -55,5 +56,20 @@ impl FsSystem {
             .filter(|entity| entity.metadata().map(|m| m.is_file()).unwrap_or(false))
             .map(|entity| FsSystemFile::from(entity.path()))
             .collect()
+    }
+
+    pub fn iter_api_folders(&self) -> Result<Vec<FsApi>> {
+        Ok(self
+            .get_entries()?
+            .iter()
+            // Keeps files only
+            .filter(|entity| {
+                entity
+                    .metadata()
+                    .map(|m| m.is_dir() && !entity.file_name().eq(FsData::FOLDER))
+                    .unwrap_or(false)
+            })
+            .map(|entity| FsApi::new(entity.path()))
+            .collect())
     }
 }

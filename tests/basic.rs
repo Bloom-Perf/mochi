@@ -12,11 +12,7 @@ async fn basic() {
     let app = setup_service("./tests/basic");
 
     let response = app()
-        .oneshot(
-            Request::post("/system/mvp/route")
-                .body(Body::empty())
-                .unwrap(),
-        )
+        .oneshot(Request::post("/system/route").body(Body::empty()).unwrap())
         .await
         .unwrap();
 

@@ -1,8 +1,9 @@
+use crate::yaml::filesystem::fs_api::FsApi;
 use crate::yaml::filesystem::fs_config::FsConfig;
 use crate::yaml::filesystem::fs_data::FsData;
 use crate::yaml::filesystem::fs_data_file::FsDataFile;
 use crate::yaml::filesystem::fs_system::FsSystem;
-use crate::yaml::{ApiShapeYaml, ApiYaml, ConfFolder, ResponseDataYaml, SystemFolder};
+use crate::yaml::{ApiFolder, ApiShapeYaml, ApiYaml, ConfFolder, ResponseDataYaml, SystemFolder};
 use anyhow::{Context, Result};
 use serde_yaml::from_str;
 use std::collections::HashMap;
@@ -54,13 +55,61 @@ impl ConfigurationFolder {
             .collect()
     }
 
+    pub(self) fn load_fs_api_folder(fs_api: FsApi) -> Result<ApiFolder> {
+        let data = fs_api
+            .get_data_folder()?
+            .map(ConfigurationFolder::load_fs_data)
+            .unwrap_or(Ok(HashMap::new()))?;
+
+        let apis: Vec<ApiYaml> = fs_api
+            .iter_files()?
+            .into_iter()
+            .filter_map(|file| -> Option<ApiYaml> {
+                from_str(&file.content)
+                    .context(format!("Failed to decode api \"{}\"", file.path.display()))
+                    .map_err(|e| dbg!(e))
+                    .ok()
+            })
+            .collect();
+
+        let shape: Option<ApiShapeYaml> =
+            fs_api
+                .iter_files()?
+                .into_iter()
+                .find_map(|file| -> Option<ApiShapeYaml> {
+                    from_str(&file.content)
+                        .context(format!(
+                            "Failed to decode api shape \"{}\"",
+                            file.path.display()
+                        ))
+                        .ok()
+                });
+
+        Ok(ApiFolder {
+            name: fs_api
+                .path
+                .file_name()
+                .unwrap()
+                .to_os_string()
+                .into_string()
+                .unwrap(),
+            apis,
+            shape,
+            data,
+        })
+    }
+
     pub(self) fn load_fs_system(fs_system: FsSystem) -> Result<SystemFolder> {
         let data = fs_system
             .get_data_folder()?
             .map(ConfigurationFolder::load_fs_data)
             .unwrap_or(Ok(HashMap::new()))?;
 
-        dbg!(data.clone());
+        let api_folders: Vec<ApiFolder> = fs_system
+            .iter_api_folders()?
+            .into_iter()
+            .filter_map(|fs_api| ConfigurationFolder::load_fs_api_folder(fs_api).ok())
+            .collect();
 
         let apis: Vec<ApiYaml> = fs_system
             .iter_files()?
@@ -73,18 +122,18 @@ impl ConfigurationFolder {
             })
             .collect();
 
-        let shapes: Vec<ApiShapeYaml> = fs_system
-            .iter_files()?
-            .into_iter()
-            .filter_map(|file| -> Option<ApiShapeYaml> {
-                from_str(&file.content)
-                    .context(format!(
-                        "Failed to decode api shape \"{}\"",
-                        file.path.display()
-                    ))
-                    .ok()
-            })
-            .collect();
+        let shape: Option<ApiShapeYaml> =
+            fs_system
+                .iter_files()?
+                .into_iter()
+                .find_map(|file| -> Option<ApiShapeYaml> {
+                    from_str(&file.content)
+                        .context(format!(
+                            "Failed to decode api shape \"{}\"",
+                            file.path.display()
+                        ))
+                        .ok()
+                });
 
         Ok(SystemFolder {
             name: fs_system
@@ -94,8 +143,9 @@ impl ConfigurationFolder {
                 .to_os_string()
                 .into_string()
                 .unwrap(),
+            api_folders,
             apis,
-            shapes,
+            shape,
             data,
         })
     }

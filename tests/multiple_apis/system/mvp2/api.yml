@@ -1,7 +1,5 @@
-name: mvp
-headers: {}
 rules:
-  - matches: POST  /route1
+  - matches: GET  /route1
     response: !Inline [200, "content", "text/plain"]
-  - matches: PATCH /route2
+  - matches: DELETE /route2
     response: !File response

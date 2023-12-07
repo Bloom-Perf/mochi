@@ -111,6 +111,24 @@ pub type SystemRulesMap = HashMap<HttpRoute, Vec<RuleCore>>;
 impl SystemCore {
     pub fn generate_rules_map(&self) -> SystemRulesMap {
         let mut rules_map: SystemRulesMap = HashMap::new();
+
+        // root api
+        for ApiCore(rules) in self.root_api_set.apis.iter() {
+            for rule in rules.iter() {
+                // dbg!(rule.clone());
+                let http_route = HttpRoute {
+                    route: format!("{}", rule.endpoint.route.to_owned()),
+                    method: rule.endpoint.method.to_owned(),
+                };
+
+                rules_map
+                    .entry(http_route)
+                    .and_modify(|v| v.push(rule.to_owned()))
+                    .or_insert(vec![rule.to_owned()]);
+            }
+        }
+
+        // api folders
         for api_set in self.api_sets.iter() {
             for ApiCore(rules) in api_set.apis.iter() {
                 for rule in rules.iter() {

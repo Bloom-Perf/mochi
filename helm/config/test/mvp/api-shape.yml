@@ -1,4 +1,3 @@
-name: mvp
 shape:
   - POST  /test/first
   - PATCH /test/second
