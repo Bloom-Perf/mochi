@@ -58,29 +58,29 @@ fn extract_rule(
         ),
     };
 
-    let opt_rule_body = opt_body.map(|str| {
-        if Regex::new(r"\{\{").unwrap().captures(&str).is_some() {
+    let opt_rule_body = opt_body.map(|content| {
+        if Regex::new(r"\{\{").unwrap().captures(&content).is_some() {
             let headers = Regex::new(r"([^.]headers\.)")
                 .unwrap()
-                .captures(&str)
+                .captures(&content)
                 .is_some();
             let url_path = Regex::new(r"([^.]url\.path\.)")
                 .unwrap()
-                .captures(&str)
+                .captures(&content)
                 .is_some();
             let url_query = Regex::new(r"([^.]url\.query\.)")
                 .unwrap()
-                .captures(&str)
+                .captures(&content)
                 .is_some();
 
             RuleBodyCore::Templated {
                 url_query,
                 url_path,
                 headers,
-                content: str.clone(),
+                content,
             }
         } else {
-            RuleBodyCore::Plain(str)
+            RuleBodyCore::Plain(content)
         }
     });
 
@@ -132,7 +132,7 @@ pub fn build_api_set(
     data: &HashMap<String, ResponseDataYaml>,
 ) -> Result<ApiSetCore> {
     let shape_core = match shape {
-        Some(s) => Some(extract_api_shape(&s)?),
+        Some(s) => Some(extract_api_shape(s)?),
         None => None,
     };
 
@@ -152,7 +152,7 @@ pub fn build_root_api_set(
     data: &HashMap<String, ResponseDataYaml>,
 ) -> Result<ApiSetRootCore> {
     let shape_core = match shape {
-        Some(s) => Some(extract_api_shape(&s)?),
+        Some(s) => Some(extract_api_shape(s)?),
         None => None,
     };
 
