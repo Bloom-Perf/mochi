@@ -8,5 +8,6 @@ data: |
     "headers.host": "{{headers.host}}",
     "url.query.foo": {{#if url.query.foo }} "{{url.query.foo}}" {{else}} "none" {{/if}},
     "url.path.foo": "{{ url.path.foo }}",
-    "unknown parameter url.test.test": "{{url.test.test}}"
+    "unknown parameter url.test.test": "{{url.test.test}}",
+    "test body json": "{{body.json.embedded.id}}"
   }

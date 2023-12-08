@@ -72,11 +72,16 @@ fn extract_rule(
                 .unwrap()
                 .captures(&content)
                 .is_some();
+            let request_body_json = Regex::new(r"([^.]body\.json\.)")
+                .unwrap()
+                .captures(&content)
+                .is_some();
 
             RuleBodyCore::Templated {
                 url_query,
                 url_path,
                 headers,
+                request_body_json,
                 content,
             }
         } else {

@@ -3,12 +3,13 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 
 use crate::metrics::MochiMetrics;
-use axum::extract::State;
-use axum::extract::{FromRequest, Path, Query};
+use axum::extract::{FromRequestParts, State};
+use axum::extract::{Path, Query};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{on, MethodFilter};
 use axum::Router;
 use handlebars::Handlebars;
+use http_body_util::BodyExt;
 use log::warn;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -30,13 +31,21 @@ async fn generate_response_body(
         Some(RuleBodyCore::Plain(content)) => Body::from(content),
         Some(RuleBodyCore::Templated {
             content,
+            request_body_json,
             url_path,
             url_query,
             headers,
         }) => {
+            let (mut parts, body) = request.into_parts();
+            let req_body_json: Option<Value> = if request_body_json {
+                serde_json::from_slice(body.collect().await.unwrap().to_bytes().as_ref()).ok()
+            } else {
+                None
+            };
+
             let json_headers: Option<Value> = if headers {
-                Some(json!(request
-                    .headers()
+                Some(json!(parts
+                    .headers
                     .iter()
                     .map(|(key, value)| (key.to_string(), value.to_str().unwrap().to_string()))
                     .collect::<HashMap<String, String>>()))
@@ -46,7 +55,7 @@ async fn generate_response_body(
 
             let url_query_params: Option<Value> = if url_query {
                 let Query(query_params): Query<HashMap<String, String>> =
-                    Query::try_from_uri(request.uri()).unwrap();
+                    Query::try_from_uri(&parts.uri).unwrap();
                 Some(json!(query_params))
             } else {
                 None
@@ -54,7 +63,7 @@ async fn generate_response_body(
 
             let url_path_params: Option<Value> = if url_path {
                 let Path(path_params): Path<HashMap<String, String>> =
-                    Path::from_request(request, &()).await.unwrap();
+                    Path::from_request_parts(&mut parts, &()).await.unwrap();
                 Some(json!(path_params))
             } else {
                 None
@@ -69,6 +78,9 @@ async fn generate_response_body(
                             "url": {
                                 "query": url_query_params,
                                 "path": url_path_params,
+                            },
+                            "body":{
+                                "json": req_body_json
                             }
                         }),
                     )

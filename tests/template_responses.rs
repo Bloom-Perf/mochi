@@ -16,7 +16,7 @@ async fn template_responses() {
         .oneshot(
             Request::post("/system/route/my_path_param?foo=myfoo")
                 .header("header", "my simple header")
-                .body(Body::empty())
+                .body(Body::from("{\"test\": \"test_value1234\"}"))
                 .unwrap(),
         )
         .await
@@ -31,7 +31,8 @@ async fn template_responses() {
               "headers.header": "my simple header",
               "url.query.foo": "myfoo",
               "url.path.path_param": "my_path_param",
-              "unknown parameter url.test.test": ""
+              "unknown parameter url.test.test": "",
+              "body json param": "test_value1234"
             }"###
         )
     );

@@ -37,6 +37,7 @@ pub enum RuleBodyCore {
         headers: bool,
         url_path: bool,
         url_query: bool,
+        request_body_json: bool,
         content: String,
     },
 }
