@@ -109,7 +109,7 @@ fn extract_api(api: &ApiYaml, data: &HashMap<String, ResponseDataYaml>) -> Resul
             extract_rule(
                 r,
                 api.latency.clone(),
-                api.headers.clone().unwrap_or(HashMap::new()),
+                api.headers.clone().unwrap_or_default(),
                 data.clone(),
             )
         })
