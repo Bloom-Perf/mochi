@@ -6,7 +6,7 @@ use mochi::setup_app;
 
 pub async fn string_body(response: Response) -> String {
     let bytes = response.into_body().collect().await.unwrap();
-    
+
     String::from_utf8(bytes.to_bytes().to_vec()).unwrap()
 }
 
