@@ -6,8 +6,8 @@ use mochi::setup_app;
 
 pub async fn string_body(response: Response) -> String {
     let bytes = response.into_body().collect().await.unwrap();
-    let body_str = String::from_utf8(bytes.to_bytes().to_vec()).unwrap();
-    body_str
+    
+    String::from_utf8(bytes.to_bytes().to_vec()).unwrap()
 }
 
 pub fn setup_service(path: &'static str) -> Box<dyn Fn() -> RouterIntoService<Body>> {

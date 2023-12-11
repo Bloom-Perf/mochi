@@ -1,7 +1,7 @@
 use crate::core::{
-    ApiCore, ApiSetCore, ApiSetRootCore, ConfCore, EndpointCore, LatencyCore, RuleBodyCore,
-    RuleCore, SystemCore,
+    ApiCore, ApiSetCore, ApiSetRootCore, ConfCore, EndpointCore, LatencyCore, RuleCore, SystemCore,
 };
+use crate::template::render::rule_body_from_str;
 use crate::yaml::{
     ApiShapeYaml, ApiYaml, ConfFolder, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
 };
@@ -58,36 +58,7 @@ fn extract_rule(
         ),
     };
 
-    let opt_rule_body = opt_body.map(|content| {
-        if Regex::new(r"\{\{").unwrap().captures(&content).is_some() {
-            let headers = Regex::new(r"([^.]headers\.)")
-                .unwrap()
-                .captures(&content)
-                .is_some();
-            let url_path = Regex::new(r"([^.]url\.path\.)")
-                .unwrap()
-                .captures(&content)
-                .is_some();
-            let url_query = Regex::new(r"([^.]url\.query\.)")
-                .unwrap()
-                .captures(&content)
-                .is_some();
-            let request_body_json = Regex::new(r"([^.]body\.json\.)")
-                .unwrap()
-                .captures(&content)
-                .is_some();
-
-            RuleBodyCore::Templated {
-                url_query,
-                url_path,
-                headers,
-                request_body_json,
-                content,
-            }
-        } else {
-            RuleBodyCore::Plain(content)
-        }
-    });
+    let opt_rule_body = opt_body.map(rule_body_from_str);
 
     Ok(RuleCore {
         endpoint,

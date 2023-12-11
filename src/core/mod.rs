@@ -1,5 +1,6 @@
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
+use handlebars::Template;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -38,7 +39,7 @@ pub enum RuleBodyCore {
         url_path: bool,
         url_query: bool,
         request_body_json: bool,
-        content: String,
+        template: Template,
     },
 }
 

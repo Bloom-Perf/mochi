@@ -7,7 +7,7 @@ data: |
     "headers.header": "{{headers.header}}",
     "headers.host": "{{headers.host}}",
     "url.query.foo": {{#if url.query.foo }} "{{url.query.foo}}" {{else}} "none" {{/if}},
-    "url.path.foo": "{{ url.path.foo }}",
+    "url.path.foo": "{{ url.path.test }}",
     "unknown parameter url.test.test": "{{url.test.test}}",
     "test body json": "{{body.json.embedded.id}}"
   }

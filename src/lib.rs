@@ -7,6 +7,7 @@ use axum_otel_metrics::HttpMetricsLayerBuilder;
 mod core;
 mod http;
 mod metrics;
+mod template;
 mod yaml;
 
 pub fn setup_app(conf_path: String) -> Result<Router<()>> {

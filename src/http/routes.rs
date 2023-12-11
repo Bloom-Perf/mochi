@@ -3,15 +3,12 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 
 use crate::metrics::MochiMetrics;
-use axum::extract::{FromRequestParts, State};
-use axum::extract::{Path, Query};
+use crate::template::render::rule_body_to_str;
+use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{on, MethodFilter};
 use axum::Router;
-use handlebars::Handlebars;
-use http_body_util::BodyExt;
 use log::warn;
-use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -28,69 +25,13 @@ async fn generate_response_body(
 ) -> Body {
     match rule_body_core {
         None => Body::empty(),
-        Some(RuleBodyCore::Plain(content)) => Body::from(content),
-        Some(RuleBodyCore::Templated {
-            content,
-            request_body_json,
-            url_path,
-            url_query,
-            headers,
-        }) => {
-            let (mut parts, body) = request.into_parts();
-            let req_body_json: Option<Value> = if request_body_json {
-                serde_json::from_slice(body.collect().await.unwrap().to_bytes().as_ref()).ok()
-            } else {
-                None
-            };
-
-            let json_headers: Option<Value> = if headers {
-                Some(json!(parts
-                    .headers
-                    .iter()
-                    .map(|(key, value)| (key.to_string(), value.to_str().unwrap().to_string()))
-                    .collect::<HashMap<String, String>>()))
-            } else {
-                None
-            };
-
-            let url_query_params: Option<Value> = if url_query {
-                let Query(query_params): Query<HashMap<String, String>> =
-                    Query::try_from_uri(&parts.uri).unwrap();
-                Some(json!(query_params))
-            } else {
-                None
-            };
-
-            let url_path_params: Option<Value> = if url_path {
-                let Path(path_params): Path<HashMap<String, String>> =
-                    Path::from_request_parts(&mut parts, &()).await.unwrap();
-                Some(json!(path_params))
-            } else {
-                None
-            };
-
-            Body::from(
-                Handlebars::new()
-                    .render_template(
-                        content.as_str(),
-                        &json!({
-                            "headers": json_headers,
-                            "url": {
-                                "query": url_query_params,
-                                "path": url_path_params,
-                            },
-                            "body":{
-                                "json": req_body_json
-                            }
-                        }),
-                    )
-                    .unwrap(),
-            )
+        Some(rule_body_core) => {
+            Body::from(rule_body_to_str(request, rule_body_core).await.unwrap())
         }
     }
 }
 
-pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Response<Body> {
+pub async fn handle_request<'reg>(request: Request<Body>, rules: Vec<RuleCore>) -> Response<Body> {
     for rule in rules.iter() {
         // All api headers must match the corresponding headers in the received request
         let matching_request = rule.headers.iter().all(|(key, value)| {
