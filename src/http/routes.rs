@@ -142,7 +142,7 @@ impl ConfCore {
                         handler404(m, r, system_name_subrouter)
                     });
 
-                r.nest(&format!("/{}", system.name), subrouter)
+                r.nest(&format!("/static/{}", system.name), subrouter)
             })
             .fallback(move |m: State<MochiMetrics>, r: Request<Body>| {
                 handler404(m, r, "Mochi System".to_string())

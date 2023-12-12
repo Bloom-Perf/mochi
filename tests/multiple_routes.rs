@@ -12,7 +12,11 @@ async fn multiple_routes() {
     let app = setup_service("./tests/multiple_routes");
 
     let response = app()
-        .oneshot(Request::post("/system/route1").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::post("/static/system/route1")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -21,7 +25,7 @@ async fn multiple_routes() {
 
     let response = app()
         .oneshot(
-            Request::patch("/system/route2")
+            Request::patch("/static/system/route2")
                 .body(Body::empty())
                 .unwrap(),
         )

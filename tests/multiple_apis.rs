@@ -13,7 +13,7 @@ async fn multiple_apis() {
 
     let response = app()
         .oneshot(
-            Request::post("/system/mvp/route1")
+            Request::post("/static/system/mvp/route1")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -25,7 +25,7 @@ async fn multiple_apis() {
 
     let response = app()
         .oneshot(
-            Request::patch("/system/mvp/route2")
+            Request::patch("/static/system/mvp/route2")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -37,7 +37,7 @@ async fn multiple_apis() {
 
     let response = app()
         .oneshot(
-            Request::get("/system/mvp2/route1")
+            Request::get("/static/system/mvp2/route1")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -49,7 +49,7 @@ async fn multiple_apis() {
 
     let response = app()
         .oneshot(
-            Request::delete("/system/mvp2/route2")
+            Request::delete("/static/system/mvp2/route2")
                 .body(Body::empty())
                 .unwrap(),
         )

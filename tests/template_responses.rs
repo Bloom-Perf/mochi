@@ -14,7 +14,7 @@ async fn template_responses() {
 
     let response = app()
         .oneshot(
-            Request::post("/system/route/my_path_param?foo=myfoo")
+            Request::post("/static/system/route/my_path_param?foo=myfoo")
                 .header("header", "my simple header")
                 .body(Body::from("{\"test\": \"test_value1234\"}"))
                 .unwrap(),

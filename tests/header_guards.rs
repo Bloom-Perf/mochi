@@ -13,7 +13,7 @@ async fn header_guards() {
 
     let response = app()
         .oneshot(
-            Request::post("/system/route1")
+            Request::post("/static/system/route1")
                 .header("USER", "success")
                 .body(Body::empty())
                 .unwrap(),
@@ -26,7 +26,7 @@ async fn header_guards() {
 
     let response = app()
         .oneshot(
-            Request::post("/system/route1")
+            Request::post("/static/system/route1")
                 .header("USER", "error")
                 .body(Body::empty())
                 .unwrap(),
