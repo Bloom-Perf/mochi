@@ -1,9 +1,7 @@
-latency: !Constant 200
 rules:
   - matches: POST  /test/first/:test
-    latency: !Constant 1000
     response: !File first
-  - matches: PATCH /test/second
+  - matches: PATCH /test/second/:foo
     response: !File second
   - matches: GET /test/third
     response: !File sub/third

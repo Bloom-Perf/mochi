@@ -3,5 +3,5 @@ description: "Un autre endpoint de test"
 format: application/json
 data: |
   {
-    "autre": "DELIVERED"
+    "autre": "{{url.path.foo}}"
   }
