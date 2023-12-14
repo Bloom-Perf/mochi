@@ -56,10 +56,10 @@ impl ConfigurationFolder {
     }
 
     pub(self) fn load_fs_api_folder(fs_api: FsApi) -> Result<ApiFolder> {
-        let data = fs_api
-            .get_data_folder()?
-            .map(ConfigurationFolder::load_fs_data)
-            .unwrap_or(Ok(HashMap::new()))?;
+        let data = match fs_api.get_data_folder()? {
+            Some(fs_data) => ConfigurationFolder::load_fs_data(fs_data)?,
+            None => HashMap::new(),
+        };
 
         let apis: Vec<ApiYaml> = fs_api
             .iter_files()?
@@ -100,10 +100,10 @@ impl ConfigurationFolder {
     }
 
     pub(self) fn load_fs_system(fs_system: FsSystem) -> Result<SystemFolder> {
-        let data = fs_system
-            .get_data_folder()?
-            .map(ConfigurationFolder::load_fs_data)
-            .unwrap_or(Ok(HashMap::new()))?;
+        let data = match fs_system.get_data_folder()? {
+            Some(fs_data) => ConfigurationFolder::load_fs_data(fs_data)?,
+            None => HashMap::new(),
+        };
 
         let api_folders: Vec<ApiFolder> = fs_system
             .iter_api_folders()?
