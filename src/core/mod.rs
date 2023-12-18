@@ -39,6 +39,7 @@ pub enum RuleBodyCore {
         url_path: bool,
         url_query: bool,
         request_body_json: bool,
+        request_body_text: bool,
         registry: Handlebars<'static>,
     },
 }

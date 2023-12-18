@@ -1,0 +1,13 @@
+status: 200
+format: application/xml
+data: |
+  <node>
+  {{#xpath body.text "//el[@name=\"v1\"]/text()"}}
+    <len>{{len @results}}</len>
+    <results>
+    {{#each @results}}
+      <n>{{this}}</n>
+    {{/each}}
+    </results>
+  {{/xpath}}
+  </node>

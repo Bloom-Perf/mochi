@@ -1,4 +1,5 @@
 use crate::core::RuleBodyCore;
+use crate::template::helper_xpath::XPATH_HELPER;
 use crate::template::parameter::TemplateParameterExtractor;
 use crate::template::variables::HasVariables;
 use anyhow::{Context, Result};
@@ -18,6 +19,7 @@ pub fn rule_body_from_str(content: String) -> RuleBodyCore {
         .context("Registering template in registry")
         .unwrap();
 
+    registry.register_helper("xpath", Box::new(XPATH_HELPER));
     match registry.get_template(TEMPLATE_KEY) {
         Some(template) => match template.elements.as_slice() {
             [TemplateElement::RawString(e)] => RuleBodyCore::Plain(e.to_owned()),
@@ -27,6 +29,7 @@ pub fn rule_body_from_str(content: String) -> RuleBodyCore {
                     url_query: parameters.has_url_query(),
                     url_path: parameters.has_url_path(),
                     headers: parameters.has_headers(),
+                    request_body_text: parameters.has_body_text(),
                     request_body_json: parameters.has_body_json(),
                     registry,
                 }
@@ -42,13 +45,21 @@ pub async fn rule_body_to_str(request: Request<Body>, content: RuleBodyCore) -> 
         RuleBodyCore::Templated {
             registry,
             request_body_json,
+            request_body_text,
             url_path,
             url_query,
             headers,
         } => {
             let (mut parts, body) = request.into_parts();
+            let bytes = body.collect().await.unwrap().to_bytes();
             let req_body_json: Option<Value> = if request_body_json {
-                serde_json::from_slice(body.collect().await.unwrap().to_bytes().as_ref()).ok()
+                serde_json::from_slice(bytes.as_ref()).ok()
+            } else {
+                None
+            };
+
+            let req_body_text: Option<String> = if request_body_text {
+                String::from_utf8(bytes.to_vec()).ok()
             } else {
                 None
             };
@@ -91,7 +102,8 @@ pub async fn rule_body_to_str(request: Request<Body>, content: RuleBodyCore) -> 
                             "path": url_path_params,
                         },
                         "body":{
-                            "json": req_body_json
+                            "json": req_body_json,
+                            "text": req_body_text
                         }
                     }),
                 )

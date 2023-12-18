@@ -37,3 +37,69 @@ async fn template_responses() {
         )
     );
 }
+
+#[tokio::test]
+async fn xpath() {
+    let app = setup_service("./tests/template_responses");
+
+    let response = app()
+        .oneshot(
+            Request::post("/static/system/xpath")
+                .body(Body::from(
+                    r###"<node>
+    <el name="v1" />
+    <el name="v2" />
+    <el name="v3" />
+</node>"###,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        string_body(response).await,
+        indoc!(
+            r###"<node>
+  <len>1</len>
+  <results>
+    <n>v1</n>
+  </results>
+</node>"###
+        )
+    );
+}
+
+#[tokio::test]
+async fn xpath_str() {
+    let app = setup_service("./tests/template_responses");
+
+    let response = app()
+        .oneshot(
+            Request::post("/static/system/xpath_str")
+                .body(Body::from(
+                    r###"<node>
+    <el name="v1">hello</el>
+    <el name="v2" />
+    <el name="v3">world</el>
+</node>"###,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        string_body(response).await,
+        indoc!(
+            r###"<node>
+  <len>1</len>
+  <results>
+    <n>hello</n>
+  </results>
+</node>"###
+        )
+    );
+}

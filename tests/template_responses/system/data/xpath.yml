@@ -1,6 +1,5 @@
-status: 409
-description: "Un autre endpoint de test"
-format: application/json
+status: 200
+format: application/xml
 data: |
   <node>
   {{#xpath body.text "//el[@name=\"v1\"]"}}

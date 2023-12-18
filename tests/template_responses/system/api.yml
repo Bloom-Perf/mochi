@@ -1,3 +1,7 @@
 rules:
   - matches: POST /route/:path_param
     response: !File response
+  - matches: POST /xpath
+    response: !File xpath
+  - matches: POST /xpath_str
+    response: !File xpath_str
