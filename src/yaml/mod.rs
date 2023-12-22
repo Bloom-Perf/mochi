@@ -14,6 +14,10 @@ pub enum LatencyYaml {
 pub enum Response {
     File(String),
     Inline(u16, Option<String>, Option<String>),
+    Ok,
+    OkText(String),
+    OkJson(String),
+    OkXml(String),
 }
 
 #[derive(Deserialize, Clone, Debug)]

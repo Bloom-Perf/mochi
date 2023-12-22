@@ -46,9 +46,9 @@ fn extract_rule(
                 StatusCode::from_u16(file.status)
                     .context(format!("Parsing file status '{}'", file.status))?,
                 file.data
-                    .to_owned()
+                    .clone()
                     .and_then(|b| if b.is_empty() { None } else { Some(b) }),
-                file.format.to_owned(),
+                file.format.clone(),
             )
         }
         Response::Inline(status, body, format) => (
@@ -56,6 +56,18 @@ fn extract_rule(
             body.and_then(|b| if b.is_empty() { None } else { Some(b) }),
             format,
         ),
+        Response::OkText(body) => (StatusCode::OK, Some(body), Some("text/plain".to_string())),
+        Response::OkJson(body) => (
+            StatusCode::OK,
+            Some(body),
+            Some("application/json".to_string()),
+        ),
+        Response::OkXml(body) => (
+            StatusCode::OK,
+            Some(body),
+            Some("application/xml".to_string()),
+        ),
+        Response::Ok => (StatusCode::NO_CONTENT, None, None),
     };
 
     let opt_rule_body = opt_body.map(rule_body_from_str);

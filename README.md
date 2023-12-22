@@ -56,7 +56,7 @@ system/
 ```yaml api.yml
 rules:
   - matches: POST  /route
-    response: !Inline [200, "{content: \"hello\"}", "application/json"]
+    response: !OkJson "{content: \"hello\"}"
 ```
 
 ### Multiple apis example
@@ -74,13 +74,13 @@ system/
 ```yaml api.yml
 rules:
   - matches: POST  /route
-    response: !Inline [200, "{content: \"hello\"}", "application/json"]
+    response: !OkJson "{content: \"hello\"}"
 ```
 **v2/api.yml**
 ```yaml api.yml
 rules:
   - matches: PATCH  /another
-    response: !Inline [200, "{content: \"hello\"}", "application/json"]
+    response: !OkJson "{content: \"hello\"}"
 ```
 
 ### Multiple apis with data folder example
@@ -109,13 +109,13 @@ data: |
 ```yaml api.yml
 rules:
   - matches: POST  /route
-    response: !File "response"
+    response: !File response
 ```
 **v2/api.yml**
 ```yaml api.yml
 rules:
   - matches: PATCH  /another
-    response: !File "response"
+    response: !File response
 ```
 
 ### Response body templating

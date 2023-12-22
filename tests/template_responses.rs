@@ -66,7 +66,8 @@ async fn xpath() {
   <results>
     <n>v1</n>
   </results>
-</node>"###
+</node>
+"###
         )
     );
 }

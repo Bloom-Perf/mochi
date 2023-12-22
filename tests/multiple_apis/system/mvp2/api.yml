@@ -1,5 +1,5 @@
 rules:
   - matches: GET  /route1
-    response: !Inline [200, "content", "text/plain"]
+    response: !OkText "content"
   - matches: DELETE /route2
     response: !File response

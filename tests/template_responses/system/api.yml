@@ -2,6 +2,26 @@ rules:
   - matches: POST /route/:path_param
     response: !File response
   - matches: POST /xpath
-    response: !File xpath
+    response: !OkXml |
+      <node>
+      {{#xpath body.text "//el[@name=\"v1\"]"}}
+        <len>{{len @results}}</len>
+        <results>
+        {{#each @results}}
+          <n>{{name}}</n>
+          {{/each}}
+        </results>
+        {{/xpath}}
+      </node>
   - matches: POST /xpath_str
-    response: !File xpath_str
+    response: !OkXml |
+      <node>
+      {{#xpath body.text "//el[@name=\"v1\"]/text()"}}
+        <len>{{len @results}}</len>
+        <results>
+        {{#each @results}}
+          <n>{{this}}</n>
+          {{/each}}
+        </results>
+        {{/xpath}}
+      </node>
