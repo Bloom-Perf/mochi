@@ -2,7 +2,7 @@ use crate::yaml::filesystem::fs_api::FsApi;
 use crate::yaml::filesystem::fs_data::FsData;
 use crate::yaml::filesystem::fs_system_file::FsSystemFile;
 use anyhow::{Context, Result};
-use log::warn;
+use log::{debug, warn};
 use std::fs;
 use std::fs::DirEntry;
 use std::path::PathBuf;
@@ -18,6 +18,11 @@ impl FsSystem {
 
     // Entries loaded per system FOLDER (./config/system/*)
     fn get_entries(&self) -> Result<Vec<DirEntry>> {
+        debug!(
+            "Iterating over entries of system folder '{}'",
+            self.path.display()
+        );
+
         Ok(fs::read_dir(self.path.clone())
             .context(format!(
                 "Could not read directory for system '{}'",
@@ -28,6 +33,12 @@ impl FsSystem {
     }
 
     pub fn get_data_folder(&self) -> Result<Option<FsData>> {
+        debug!(
+            "Fetching {} folder of system folder '{}'",
+            FsData::FOLDER,
+            self.path.display()
+        );
+
         // data directory of the current system FOLDER (./config/system/data/)
         let fs_data = self
             .get_entries()?
@@ -40,16 +51,17 @@ impl FsSystem {
             .map(|dir_entry| FsData::new(dir_entry.path()));
 
         if fs_data.is_none() {
-            warn!(
-                "No data FOLDER found for system \"{}\"",
-                self.path.display()
-            );
+            warn!("No data FOLDER found for system '{}'", self.path.display());
         }
 
         Ok(fs_data)
     }
 
     pub fn iter_files(&self) -> Result<Vec<FsSystemFile>> {
+        debug!(
+            "Iterating over files of system folder '{}'",
+            self.path.display()
+        );
         self.get_entries()?
             .iter()
             // Keeps files only
@@ -59,6 +71,11 @@ impl FsSystem {
     }
 
     pub fn iter_api_folders(&self) -> Result<Vec<FsApi>> {
+        debug!(
+            "Iterating over api folders of system folder '{}'",
+            self.path.display()
+        );
+
         Ok(self
             .get_entries()?
             .iter()

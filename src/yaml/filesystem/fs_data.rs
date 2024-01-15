@@ -1,5 +1,6 @@
 use crate::yaml::filesystem::fs_data_file::FsDataFile;
 use anyhow::Result;
+use log::debug;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
@@ -14,6 +15,10 @@ impl FsData {
     }
 
     pub fn iter_files(&self) -> Result<Vec<FsDataFile>> {
+        debug!(
+            "Iterating over files of data folder '{}'",
+            self.path.display()
+        );
         WalkDir::new(self.path.clone())
             .into_iter()
             // Keeps files only

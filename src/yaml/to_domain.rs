@@ -89,7 +89,6 @@ fn extract_rule(
 }
 
 fn extract_api(api: &ApiYaml, data: &HashMap<String, ResponseDataYaml>) -> Result<ApiCore> {
-    dbg!(data);
     let extracted_rules: Result<Vec<RuleCore>> = api
         .rules
         .iter()
@@ -184,7 +183,7 @@ impl ConfFolder {
             .collect();
 
         let v = system_cores?;
-        dbg!(v.clone());
+        //dbg!(v.clone());
 
         Ok(ConfCore { systems: v })
     }

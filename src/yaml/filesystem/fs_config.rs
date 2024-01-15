@@ -1,5 +1,6 @@
 use crate::yaml::filesystem::fs_system::FsSystem;
 use anyhow::{Context, Result};
+use log::debug;
 use std::fs;
 use std::path::PathBuf;
 
@@ -17,6 +18,11 @@ impl FsConfig {
             "Could not read configuration FOLDER '{}'",
             self.folder.display()
         ))?;
+
+        debug!(
+            "Iterating over system folders in folder '{}'",
+            self.folder.display()
+        );
 
         Ok(conf_dir
             // Just keep directories
