@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 rust:1.74-slim@sha256:3aee2d2979c2ddb4de910a38f1e91ca162475a67754fb07e2bb74661fd859efe AS builder
+FROM --platform=linux/amd64 rust:1.75-slim@sha256:c74cf489482938f1acc1c39adf99e836cf1b62258ecfecceff60aceebc7ad2e1 AS builder
 WORKDIR /usr/src
 
 # Create blank project
