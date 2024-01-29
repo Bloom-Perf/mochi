@@ -25,7 +25,7 @@ RUN touch /usr/src/mochi/src/main.rs
 # This is the actual application build.
 RUN cargo build --target x86_64-unknown-linux-musl --release
 
-FROM --platform=linux/amd64 alpine:3.18@sha256:34871e7290500828b39e22294660bee86d966bc0017544e848dd9a255cdf59e0
+FROM --platform=linux/amd64 alpine:3.18@sha256:11e21d7b981a59554b3f822c49f6e9f57b6068bb74f49c4cd5cc4c663c7e5160
 
 WORKDIR /usr/local/bin
 
