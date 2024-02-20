@@ -12,6 +12,9 @@ pub struct FsSystem {
 }
 
 impl FsSystem {
+    const API_FILE_PREFIX: &'static str = "api-";
+    const SHAPE_FILE_PREFIX: &'static str = "shape-";
+
     pub fn new(path: PathBuf) -> FsSystem {
         FsSystem { path }
     }
@@ -55,6 +58,44 @@ impl FsSystem {
         }
 
         Ok(fs_data)
+    }
+
+    pub fn iter_api_files(&self) -> Result<Vec<FsSystemFile>> {
+        debug!(
+            "Iterating over api files of system folder '{}'",
+            self.path.display()
+        );
+        self.get_entries()?
+            .iter()
+            // Keeps files only
+            .filter(|entity| {
+                entity.metadata().map(|m| m.is_file()).unwrap_or(false)
+                    && entity
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(FsSystem::API_FILE_PREFIX)
+            })
+            .map(|entity| FsSystemFile::from(entity.path()))
+            .collect()
+    }
+
+    pub fn iter_shape_files(&self) -> Result<Vec<FsSystemFile>> {
+        debug!(
+            "Iterating over shape files of system folder '{}'",
+            self.path.display()
+        );
+        self.get_entries()?
+            .iter()
+            // Keeps files only
+            .filter(|entity| {
+                entity.metadata().map(|m| m.is_file()).unwrap_or(false)
+                    && entity
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(FsSystem::SHAPE_FILE_PREFIX)
+            })
+            .map(|entity| FsSystemFile::from(entity.path()))
+            .collect()
     }
 
     pub fn iter_files(&self) -> Result<Vec<FsSystemFile>> {

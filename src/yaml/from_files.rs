@@ -134,7 +134,7 @@ impl ConfigurationFolder {
             .collect();
 
         let apis: Vec<ApiYaml> = fs_system
-            .iter_files()?
+            .iter_api_files()?
             .into_iter()
             .filter_map(|file| -> Option<ApiYaml> {
                 from_str(&file.content)
@@ -150,7 +150,7 @@ impl ConfigurationFolder {
 
         let shape: Option<ApiShapeYaml> =
             fs_system
-                .iter_files()?
+                .iter_shape_files()?
                 .into_iter()
                 .find_map(|file| -> Option<ApiShapeYaml> {
                     from_str(&file.content)
