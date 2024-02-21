@@ -2,6 +2,8 @@ use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
 use handlebars::Handlebars;
 use std::collections::HashMap;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
 pub enum LatencyCore {
@@ -54,7 +56,7 @@ pub struct RuleCore {
     pub body: Option<RuleBodyCore>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct EndpointCore {
     pub route: PathAndQuery,
     pub method: Method,
@@ -76,4 +78,10 @@ pub struct ConfCore {
 pub struct HttpRoute {
     pub route: String,
     pub method: Method,
+}
+
+impl Display for EndpointCore {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} -> {}", self.method, self.route.path())
+    }
 }

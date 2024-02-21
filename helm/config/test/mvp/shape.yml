@@ -1,0 +1,5 @@
+shape:
+  - POST  /test/first/:test
+  - PATCH /test/second/:foo
+  - GET /test/third
+  - GET /test/fourth

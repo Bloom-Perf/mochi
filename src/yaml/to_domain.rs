@@ -4,12 +4,14 @@ use crate::core::{
 use crate::template::render::rule_body_from_str;
 use crate::yaml::{
     ApiShapeYaml, ApiYaml, ConfFolder, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
+    SystemFolder,
 };
-use anyhow::{Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
+use itertools::Itertools;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, LinkedList};
 use std::str::FromStr;
 
 // Parse endpoints like this "POST /route/to/my/endpoint"
@@ -118,38 +120,100 @@ pub fn build_api_set(
     apis: &[ApiYaml],
     data: &HashMap<String, ResponseDataYaml>,
 ) -> Result<ApiSetCore> {
-    let shape_core = match shape {
-        Some(s) => Some(extract_api_shape(s)?),
-        None => None,
-    };
-
-    let apis_core: Result<Vec<ApiCore>> = apis.iter().map(|api| extract_api(api, data)).collect();
+    let apis_core: Vec<ApiCore> = apis
+        .iter()
+        .map(|api| extract_api(api, data))
+        .collect::<Result<Vec<_>>>()?;
     // TODO: Validate with shape
 
-    Ok(ApiSetCore {
-        name,
-        shape: shape_core,
-        apis: apis_core?,
-    })
+    match shape {
+        Some(s) => {
+            let shape = extract_api_shape(s)?;
+            for api in apis_core.iter() {
+                validate_api_with_shape(name.clone(), &shape, api)?
+            }
+            Ok(ApiSetCore {
+                name,
+                shape: Some(shape),
+                apis: apis_core,
+            })
+        }
+        None => Ok(ApiSetCore {
+            name,
+            shape: None,
+            apis: apis_core,
+        }),
+    }
 }
 
-pub fn build_root_api_set(
-    shape: &Option<ApiShapeYaml>,
-    apis: &[ApiYaml],
-    data: &HashMap<String, ResponseDataYaml>,
-) -> Result<ApiSetRootCore> {
-    let shape_core = match shape {
-        Some(s) => Some(extract_api_shape(s)?),
-        None => None,
-    };
+pub fn validate_api_with_shape(name: String, shape: &[EndpointCore], api: &ApiCore) -> Result<()> {
+    if shape.len() != api.0.len() {
+        bail!(
+            "Api name: {}\n -> Shape and api don’t have the same number of endpoints: {} != {}",
+            name,
+            shape.len(),
+            api.0.len()
+        );
+    }
 
-    let apis_core: Result<Vec<ApiCore>> = apis.iter().map(|api| extract_api(api, data)).collect();
-    // TODO: Validate with shape
+    // Checking shape rules are all implemented by the api
+    let mut messages = LinkedList::new();
+    for el in shape.iter() {
+        let shape_rule_implemented_by_api = api.0.iter().any(|rule| rule.endpoint == el.clone());
 
-    Ok(ApiSetRootCore {
-        shape: shape_core,
-        apis: apis_core?,
-    })
+        if !shape_rule_implemented_by_api {
+            messages.push_front(format!("Api does not implement shape rule '{}'", el))
+        }
+    }
+
+    // Checking all api rules are present in the shape definition
+    for el in api.0.iter() {
+        let api_rule_present_in_shape = shape
+            .iter()
+            .any(|shape_endpoint| *shape_endpoint == el.endpoint);
+
+        if !api_rule_present_in_shape {
+            messages.push_front(format!(
+                "Api contains rule '{}' not present in shape definition",
+                el.endpoint
+            ))
+        }
+    }
+
+    if !messages.is_empty() {
+        bail!(
+            "Api name: {}\n -> Shape/api contract mismatch:\n - {}",
+            name,
+            messages.iter().join("\n - ")
+        );
+    }
+
+    Ok(())
+}
+
+pub fn build_root_api_set(system: &SystemFolder) -> Result<ApiSetRootCore> {
+    let apis_core: Vec<ApiCore> = system
+        .apis
+        .iter()
+        .map(|api| extract_api(api, &system.data))
+        .collect::<Result<Vec<_>>>()?;
+
+    match &system.shape {
+        Some(s) => {
+            let shape = extract_api_shape(s)?;
+            for api in apis_core.iter() {
+                validate_api_with_shape(system.name.clone(), &shape, api)?
+            }
+            Ok(ApiSetRootCore {
+                shape: Some(shape),
+                apis: apis_core,
+            })
+        }
+        None => Ok(ApiSetRootCore {
+            shape: None,
+            apis: apis_core,
+        }),
+    }
 }
 
 impl ConfFolder {
@@ -158,7 +222,7 @@ impl ConfFolder {
             .systems
             .iter()
             .map(|system| {
-                let root_api_set = build_root_api_set(&system.shape, &system.apis, &system.data)?;
+                let root_api_set = build_root_api_set(&system)?;
 
                 let api_sets = system
                     .api_folders
@@ -171,7 +235,12 @@ impl ConfFolder {
                             .into_iter()
                             .chain(system.data.clone())
                             .collect();
-                        build_api_set(f.name.clone(), &f.shape, &f.apis, &merged_data_folders)
+                        build_api_set(
+                            format!("{}/{}", system.name, f.name),
+                            &f.shape,
+                            &f.apis,
+                            &merged_data_folders,
+                        )
                     })
                     .collect::<Result<Vec<_>>>()?;
                 Ok(SystemCore {

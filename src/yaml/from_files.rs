@@ -66,7 +66,7 @@ impl ConfigurationFolder {
         };
 
         let apis: Vec<ApiYaml> = fs_api
-            .iter_files()?
+            .iter_api_files()?
             .into_iter()
             .filter_map(|file| -> Option<ApiYaml> {
                 from_str(&file.content)
@@ -82,7 +82,7 @@ impl ConfigurationFolder {
 
         let shape: Option<ApiShapeYaml> =
             fs_api
-                .iter_files()?
+                .iter_shape_files()?
                 .into_iter()
                 .find_map(|file| -> Option<ApiShapeYaml> {
                     from_str(&file.content)
@@ -155,7 +155,7 @@ impl ConfigurationFolder {
                 .find_map(|file| -> Option<ApiShapeYaml> {
                     from_str(&file.content)
                         .context(format!(
-                            "Failed to decode api shape '{}' in system folder '{}'",
+                            "Failed to decode shape file '{}' in system folder '{}'",
                             file.path.display(),
                             system_path
                         ))
