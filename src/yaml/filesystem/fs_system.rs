@@ -98,19 +98,6 @@ impl FsSystem {
             .collect()
     }
 
-    pub fn iter_files(&self) -> Result<Vec<FsSystemFile>> {
-        debug!(
-            "Iterating over files of system folder '{}'",
-            self.path.display()
-        );
-        self.get_entries()?
-            .iter()
-            // Keeps files only
-            .filter(|entity| entity.metadata().map(|m| m.is_file()).unwrap_or(false))
-            .map(|entity| FsSystemFile::from(entity.path()))
-            .collect()
-    }
-
     pub fn iter_api_folders(&self) -> Result<Vec<FsApi>> {
         debug!(
             "Iterating over api folders of system folder '{}'",

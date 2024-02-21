@@ -6,7 +6,7 @@ use crate::yaml::{
     ApiShapeYaml, ApiYaml, ConfFolder, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
     SystemFolder,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode};
 use itertools::Itertools;
