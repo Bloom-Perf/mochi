@@ -18,7 +18,7 @@ axum-otel-metrics = "0.8.0"
 opentelemetry = { version = "0.21.0"}
 anyhow = "1.0.80"
 fern = "0.6.2"
-log = "0.4.20"
+log = "0.4.21"
 walkdir = "2.4.0"
 handlebars = "5.1.1"
 tower = "0.4.13"
