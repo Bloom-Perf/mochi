@@ -14,6 +14,7 @@ pub struct FsSystem {
 impl FsSystem {
     const API_FILE_PREFIX: &'static str = "api";
     const SHAPE_FILE_PREFIX: &'static str = "shape";
+    const PROXY_FILE_PREFIX: &'static str = "proxy";
 
     pub fn new(path: PathBuf) -> FsSystem {
         FsSystem { path }
@@ -60,9 +61,11 @@ impl FsSystem {
         Ok(fs_data)
     }
 
-    pub fn iter_api_files(&self) -> Result<Vec<FsSystemFile>> {
+    #[inline]
+    fn iter_over_prefixed_files(&self, str: &'static str) -> Result<Vec<FsSystemFile>> {
         debug!(
-            "Iterating over api files of system folder '{}'",
+            "Iterating over files prefixed with '{}' in system folder '{}'",
+            str,
             self.path.display()
         );
         self.get_entries()?
@@ -70,32 +73,22 @@ impl FsSystem {
             // Keeps files only
             .filter(|entity| {
                 entity.metadata().map(|m| m.is_file()).unwrap_or(false)
-                    && entity
-                        .file_name()
-                        .to_string_lossy()
-                        .starts_with(FsSystem::API_FILE_PREFIX)
+                    && entity.file_name().to_string_lossy().starts_with(str)
             })
             .map(|entity| FsSystemFile::from(entity.path()))
             .collect()
     }
 
+    pub fn iter_api_files(&self) -> Result<Vec<FsSystemFile>> {
+        self.iter_over_prefixed_files(FsSystem::API_FILE_PREFIX)
+    }
+
+    pub fn iter_proxy_files(&self) -> Result<Vec<FsSystemFile>> {
+        self.iter_over_prefixed_files(FsSystem::PROXY_FILE_PREFIX)
+    }
+
     pub fn iter_shape_files(&self) -> Result<Vec<FsSystemFile>> {
-        debug!(
-            "Iterating over shape files of system folder '{}'",
-            self.path.display()
-        );
-        self.get_entries()?
-            .iter()
-            // Keeps files only
-            .filter(|entity| {
-                entity.metadata().map(|m| m.is_file()).unwrap_or(false)
-                    && entity
-                        .file_name()
-                        .to_string_lossy()
-                        .starts_with(FsSystem::SHAPE_FILE_PREFIX)
-            })
-            .map(|entity| FsSystemFile::from(entity.path()))
-            .collect()
+        self.iter_over_prefixed_files(FsSystem::SHAPE_FILE_PREFIX)
     }
 
     pub fn iter_api_folders(&self) -> Result<Vec<FsApi>> {

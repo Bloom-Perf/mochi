@@ -1,14 +1,15 @@
 use crate::core::{
-    ApiCore, ApiSetCore, ApiSetRootCore, ConfCore, EndpointCore, LatencyCore, RuleCore, SystemCore,
+    ApiCore, ApiSetCore, ApiSetRootCore, ConfCore, EndpointCore, LatencyCore, ProxyCore, RuleCore,
+    SystemCore,
 };
 use crate::template::render::rule_body_from_str;
 use crate::yaml::{
-    ApiShapeYaml, ApiYaml, ConfFolder, LatencyYaml, Response, ResponseDataYaml, RuleYaml,
-    SystemFolder,
+    ApiShapeYaml, ApiYaml, ConfFolder, LatencyYaml, ProxyYaml, Response, ResponseDataYaml,
+    RuleYaml, SystemFolder,
 };
 use anyhow::{bail, Context, Result};
 use axum::http::uri::PathAndQuery;
-use axum::http::{Method, StatusCode};
+use axum::http::{Method, StatusCode, Uri};
 use itertools::Itertools;
 use regex::Regex;
 use std::collections::{HashMap, LinkedList};
@@ -118,35 +119,51 @@ pub fn build_api_set(
     name: String,
     shape: &Option<ApiShapeYaml>,
     apis: &[ApiYaml],
+    proxy: &Option<ProxyYaml>,
     data: &HashMap<String, ResponseDataYaml>,
 ) -> Result<ApiSetCore> {
     let apis_core: Vec<ApiCore> = apis
         .iter()
         .map(|api| extract_api(api, data))
         .collect::<Result<Vec<_>>>()?;
-    // TODO: Validate with shape
 
-    match shape {
-        Some(s) => {
-            let shape = extract_api_shape(s)?;
-            for api in apis_core.iter() {
-                validate_api_with_shape(name.clone(), &shape, api)?
-            }
-            Ok(ApiSetCore {
-                name,
-                shape: Some(shape),
-                apis: apis_core,
-            })
+    let proxy_core = match proxy {
+        Some(p) => {
+            let uri = Uri::try_from(p.url.clone()).context(format!(
+                "Parsing url '{}' while building api_set '{}'",
+                p.url, name
+            ))?;
+            Some(ProxyCore(uri))
         }
-        None => Ok(ApiSetCore {
-            name,
-            shape: None,
-            apis: apis_core,
-        }),
-    }
+        None => None,
+    };
+
+    let shape_core = match shape {
+        Some(s) => {
+            let shape = extract_api_shape(s).context(format!(
+                "Extracting api shape while building api_set '{}'",
+                &name
+            ))?;
+            for (pos, api) in apis_core.iter().enumerate() {
+                validate_api_with_shape(&name, &shape, api).context(format!(
+                    "Validating api '{}' against shape while building api_set '{}'",
+                    pos, &name
+                ))?
+            }
+            Some(shape)
+        }
+        None => None,
+    };
+
+    Ok(ApiSetCore {
+        name,
+        shape: shape_core,
+        proxy: proxy_core,
+        apis: apis_core,
+    })
 }
 
-pub fn validate_api_with_shape(name: String, shape: &[EndpointCore], api: &ApiCore) -> Result<()> {
+pub fn validate_api_with_shape(name: &String, shape: &[EndpointCore], api: &ApiCore) -> Result<()> {
     if shape.len() != api.0.len() {
         bail!(
             "Api name: {}\n -> Shape and api don’t have the same number of endpoints: {} != {}",
@@ -198,22 +215,40 @@ pub fn build_root_api_set(system: &SystemFolder) -> Result<ApiSetRootCore> {
         .map(|api| extract_api(api, &system.data))
         .collect::<Result<Vec<_>>>()?;
 
-    match &system.shape {
-        Some(s) => {
-            let shape = extract_api_shape(s)?;
-            for api in apis_core.iter() {
-                validate_api_with_shape(system.name.clone(), &shape, api)?
-            }
-            Ok(ApiSetRootCore {
-                shape: Some(shape),
-                apis: apis_core,
-            })
+    let proxy_core = match &system.proxy {
+        Some(p) => {
+            let uri = Uri::try_from(p.url.clone()).context(format!(
+                "Parsing url '{}' while building root api_set of system '{}'",
+                p.url, &system.name
+            ))?;
+            Some(ProxyCore(uri))
         }
-        None => Ok(ApiSetRootCore {
-            shape: None,
-            apis: apis_core,
-        }),
-    }
+        None => None,
+    };
+
+    let shape_core = match &system.shape {
+        Some(s) => {
+            let shape = extract_api_shape(s).context(format!(
+                "Extracting api shape while building root api_set of system '{}'",
+                &system.name
+            ))?;
+            for (pos, api) in apis_core.iter().enumerate() {
+                validate_api_with_shape(&system.name, &shape, api).context(format!(
+                    "Validating api '{}' against shape while building root api_set of system '{}'",
+                    pos,
+                    system.name.clone()
+                ))?
+            }
+            Some(shape)
+        }
+        None => None,
+    };
+
+    Ok(ApiSetRootCore {
+        shape: shape_core,
+        proxy: proxy_core,
+        apis: apis_core,
+    })
 }
 
 impl ConfFolder {
@@ -239,6 +274,7 @@ impl ConfFolder {
                             format!("{}/{}", system.name, f.name),
                             &f.shape,
                             &f.apis,
+                            &f.proxy,
                             &merged_data_folders,
                         )
                     })

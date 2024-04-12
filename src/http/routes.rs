@@ -1,15 +1,18 @@
 use crate::core::{ApiCore, ConfCore, HttpRoute, LatencyCore, RuleBodyCore, RuleCore, SystemCore};
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::{Request, StatusCode, Uri};
 
 use crate::metrics::MochiMetrics;
 use crate::template::render::rule_body_to_str;
-use axum::extract::State;
+use anyhow::Context;
+use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{on, MethodFilter};
+use axum::routing::{any, on, MethodFilter};
 use axum::Router;
-use log::warn;
+use log::{debug, warn};
+use reqwest::Method;
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -118,6 +121,44 @@ async fn handler404(
     StatusCode::NOT_FOUND.into_response()
 }
 
+async fn handle_proxy_request(
+    request_method: Method,
+    request_uri: Uri,
+    target_url: Uri,
+    target_path: String,
+    request_body: String,
+) -> anyhow::Result<Response> {
+    let query_params = match request_uri.query() {
+        Some(str) => format!("?{str}"),
+        None => "".to_string(),
+    };
+
+    let reconstructed_uri = format!("{target_url}{target_path}{query_params}");
+
+    debug!("Request received {request_uri} and redirecting to {reconstructed_uri}");
+
+    let new_url = reqwest::Url::parse(reconstructed_uri.as_str())
+        .context(format!("Reconstructing target uri {reconstructed_uri}"))?;
+
+    let response = reqwest::Client::new()
+        .request(request_method, new_url)
+        .body(request_body)
+        .send()
+        .await
+        .context(format!(
+            "Sending request / receiving response from {target_url}"
+        ))?;
+
+    Response::builder()
+        .status(response.status())
+        .header(
+            "Content-Type",
+            response.headers().get("Content-Type").unwrap(),
+        )
+        .body(Body::from(response.bytes().await.unwrap()))
+        .context("Build response")
+}
+
 impl ConfCore {
     pub fn build_router(&self, initial_router: Router<MochiMetrics>) -> Router<MochiMetrics> {
         self.systems
@@ -125,6 +166,7 @@ impl ConfCore {
             .fold(initial_router, move |r, system| {
                 let system_name_subrouter = system.name.clone();
 
+                // static sub router built from the ./config folder
                 let subrouter = system
                     .generate_rules_map()
                     .into_iter()
@@ -142,7 +184,39 @@ impl ConfCore {
                         handler404(m, r, system_name_subrouter)
                     });
 
+                let system_name_subrouter = system.name.clone();
+
+                let proxy_router =
+                    system
+                        .api_sets
+                        .iter()
+                        .fold(Router::new(), move |acc, api| match &api.proxy {
+                            Some(p) => {
+                                let url = p.0.clone();
+                                acc.route_service(
+                                &format!("/{}/*path", api.name),
+                                any(move |method: Method,
+                                       uri: Uri,
+                                       Path(path): Path<String>,
+                                       body: String| async {
+                                    match handle_proxy_request(method, uri, url, path, body).await {
+                                        Ok(content) => Ok::<_, Infallible>(content),
+                                        Err(e) => Ok::<_, Infallible>(
+                                            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                                                .into_response(),
+                                        ),
+                                    }
+                                }),
+                            )
+                            }
+                            None => acc,
+                        })
+                        .fallback(move |m: State<MochiMetrics>, r: Request<Body>| {
+                            handler404(m, r, system_name_subrouter)
+                        });
+
                 r.nest(&format!("/static/{}", system.name), subrouter)
+                    .nest(&format!("/proxy/{}", system.name), proxy_router)
             })
             .fallback(move |m: State<MochiMetrics>, r: Request<Body>| {
                 handler404(m, r, "Mochi System".to_string())

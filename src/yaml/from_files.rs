@@ -3,7 +3,9 @@ use crate::yaml::filesystem::fs_config::FsConfig;
 use crate::yaml::filesystem::fs_data::FsData;
 use crate::yaml::filesystem::fs_data_file::FsDataFile;
 use crate::yaml::filesystem::fs_system::FsSystem;
-use crate::yaml::{ApiFolder, ApiShapeYaml, ApiYaml, ConfFolder, ResponseDataYaml, SystemFolder};
+use crate::yaml::{
+    ApiFolder, ApiShapeYaml, ApiYaml, ConfFolder, ProxyYaml, ResponseDataYaml, SystemFolder,
+};
 use anyhow::{Context, Result};
 use log::{debug, error};
 use serde_yaml::from_str;
@@ -95,6 +97,21 @@ impl ConfigurationFolder {
                         .ok()
                 });
 
+        let proxy: Option<ProxyYaml> =
+            fs_api
+                .iter_proxy_files()?
+                .into_iter()
+                .find_map(|file| -> Option<ProxyYaml> {
+                    from_str(&file.content)
+                        .context(format!(
+                            "Failed to decode api proxy '{}' in api folder '{}'",
+                            file.path.display(),
+                            fs_api.path.display()
+                        ))
+                        .map_err(|e| error!("{:?}", e))
+                        .ok()
+                });
+
         Ok(ApiFolder {
             name: fs_api
                 .path
@@ -105,6 +122,7 @@ impl ConfigurationFolder {
                 .unwrap(),
             apis,
             shape,
+            proxy,
             data,
         })
     }
@@ -162,6 +180,20 @@ impl ConfigurationFolder {
                         .map_err(|e| error!("{:?}", e))
                         .ok()
                 });
+        let proxy: Option<ProxyYaml> =
+            fs_system
+                .iter_proxy_files()?
+                .into_iter()
+                .find_map(|file| -> Option<ProxyYaml> {
+                    from_str(&file.content)
+                        .context(format!(
+                            "Failed to decode api proxy '{}' in api folder '{}'",
+                            file.path.display(),
+                            fs_system.path.display()
+                        ))
+                        .map_err(|e| error!("{:?}", e))
+                        .ok()
+                });
 
         Ok(SystemFolder {
             name: fs_system
@@ -174,6 +206,7 @@ impl ConfigurationFolder {
             api_folders,
             apis,
             shape,
+            proxy,
             data,
         })
     }

@@ -1,5 +1,5 @@
 use axum::http::uri::PathAndQuery;
-use axum::http::{Method, StatusCode};
+use axum::http::{Method, StatusCode, Uri};
 use handlebars::Handlebars;
 use std::collections::HashMap;
 use std::fmt;
@@ -14,16 +14,21 @@ pub enum LatencyCore {
 pub struct ApiCore(pub Vec<RuleCore>);
 
 #[derive(Clone, Debug)]
+pub struct ProxyCore(pub Uri);
+
+#[derive(Clone, Debug)]
 pub struct ApiSetCore {
     pub name: String,
     pub shape: Option<Vec<EndpointCore>>,
     pub apis: Vec<ApiCore>,
+    pub proxy: Option<ProxyCore>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ApiSetRootCore {
     pub shape: Option<Vec<EndpointCore>>,
     pub apis: Vec<ApiCore>,
+    pub proxy: Option<ProxyCore>,
 }
 
 #[derive(Clone, Debug)]

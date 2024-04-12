@@ -29,6 +29,11 @@ pub struct ResponseDataYaml {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+pub struct ProxyYaml {
+    pub url: String,
+}
+
+#[derive(Deserialize, Clone, Debug)]
 pub struct ApiYaml {
     pub headers: Option<HashMap<String, String>>,
     pub latency: Option<LatencyYaml>,
@@ -50,6 +55,7 @@ pub struct ApiShapeYaml {
 #[derive(Clone, Debug)]
 pub struct ApiFolder {
     pub name: String,
+    pub proxy: Option<ProxyYaml>,
     pub shape: Option<ApiShapeYaml>,
     pub apis: Vec<ApiYaml>,
     pub data: HashMap<String, ResponseDataYaml>,
@@ -60,6 +66,7 @@ pub struct SystemFolder {
     pub name: String,
     pub api_folders: Vec<ApiFolder>,
     pub shape: Option<ApiShapeYaml>,
+    pub proxy: Option<ProxyYaml>,
     pub apis: Vec<ApiYaml>,
     pub data: HashMap<String, ResponseDataYaml>,
 }
