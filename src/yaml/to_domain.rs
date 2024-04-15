@@ -257,7 +257,7 @@ impl ConfFolder {
             .systems
             .iter()
             .map(|system| {
-                let root_api_set = build_root_api_set(&system)?;
+                let root_api_set = build_root_api_set(system)?;
 
                 let api_sets = system
                     .api_folders
