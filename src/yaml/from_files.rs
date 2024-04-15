@@ -23,7 +23,8 @@ impl ConfigurationFolder {
         ConfigurationFolder { folder: path }
     }
     pub(self) fn load_fs_data_file(fs_data_file: FsDataFile) -> Result<(String, ResponseDataYaml)> {
-        debug!("Loading data file '{}'", fs_data_file.path.display());
+        let path = fs_data_file.path.display().to_string();
+        debug!("Loading data file '{path}'");
 
         let filename_key = fs_data_file
             .path
@@ -36,16 +37,11 @@ impl ConfigurationFolder {
             .into_string()
             .unwrap();
 
-        let file_content = fs::read_to_string(&fs_data_file.path).context(format!(
-            "Could not read data file '{}'",
-            &fs_data_file.path.display()
-        ))?;
+        let file_content = fs::read_to_string(&fs_data_file.path)
+            .context(format!("Could not read data file '{path}'"))?;
 
-        let yaml_response_data_file_content: ResponseDataYaml =
-            from_str(&file_content).context(format!(
-                "Could not decode response data yaml file '{}'",
-                &fs_data_file.path.display()
-            ))?;
+        let yaml_response_data_file_content: ResponseDataYaml = from_str(&file_content)
+            .context(format!("Could not decode response data yaml file '{path}'"))?;
 
         Ok((filename_key, yaml_response_data_file_content))
     }
@@ -60,7 +56,8 @@ impl ConfigurationFolder {
     }
 
     pub(self) fn load_fs_api_folder(fs_api: FsApi) -> Result<ApiFolder> {
-        debug!("Loading api folder '{}'", fs_api.path.display());
+        let api_path = fs_api.path.display();
+        debug!("Loading api folder '{api_path}'");
 
         let data = match fs_api.get_data_folder()? {
             Some(fs_data) => ConfigurationFolder::load_fs_data(fs_data)?,
@@ -73,9 +70,8 @@ impl ConfigurationFolder {
             .filter_map(|file| -> Option<ApiYaml> {
                 from_str(&file.content)
                     .context(format!(
-                        "Failed to decode api '{}' in api folder '{}'",
-                        file.path.display(),
-                        fs_api.path.display()
+                        "Failed to decode api '{}' in api folder '{api_path}'",
+                        file.path.display()
                     ))
                     .map_err(|e| error!("{:?}", e))
                     .ok()
@@ -89,9 +85,8 @@ impl ConfigurationFolder {
                 .find_map(|file| -> Option<ApiShapeYaml> {
                     from_str(&file.content)
                         .context(format!(
-                            "Failed to decode api shape '{}' in api folder '{}'",
-                            file.path.display(),
-                            fs_api.path.display()
+                            "Failed to decode api shape '{}' in api folder '{api_path}'",
+                            file.path.display()
                         ))
                         .map_err(|e| error!("{:?}", e))
                         .ok()
@@ -104,22 +99,15 @@ impl ConfigurationFolder {
                 .find_map(|file| -> Option<ProxyYaml> {
                     from_str(&file.content)
                         .context(format!(
-                            "Failed to decode api proxy '{}' in api folder '{}'",
-                            file.path.display(),
-                            fs_api.path.display()
+                            "Failed to decode api proxy '{}' in api folder '{api_path}'",
+                            file.path.display()
                         ))
                         .map_err(|e| error!("{:?}", e))
                         .ok()
                 });
 
         Ok(ApiFolder {
-            name: fs_api
-                .path
-                .file_name()
-                .unwrap()
-                .to_os_string()
-                .into_string()
-                .unwrap(),
+            name: api_path.to_string(),
             apis,
             shape,
             proxy,
@@ -129,7 +117,7 @@ impl ConfigurationFolder {
 
     pub(self) fn load_fs_system(fs_system: FsSystem) -> Result<SystemFolder> {
         let system_path = &fs_system.path.display();
-        debug!("Loading system folder '{}'", system_path);
+        debug!("Loading system folder '{system_path}'");
 
         let data = match fs_system.get_data_folder()? {
             Some(fs_data) => ConfigurationFolder::load_fs_data(fs_data)?,
@@ -196,13 +184,7 @@ impl ConfigurationFolder {
                 });
 
         Ok(SystemFolder {
-            name: fs_system
-                .path
-                .file_name()
-                .unwrap()
-                .to_os_string()
-                .into_string()
-                .unwrap(),
+            name: fs_system.path.display().to_string(),
             api_folders,
             apis,
             shape,
@@ -221,7 +203,7 @@ impl ConfigurationFolder {
                 .filter_map(|system| {
                     let path = system.path.display().to_string();
                     ConfigurationFolder::load_fs_system(system)
-                        .context(format!("Loading fs filesystem '{}' in config", &path))
+                        .context(format!("Loading fs filesystem '{path}' in config"))
                         .map_err(|err| error!("{:?}", err))
                         .ok()
                 })

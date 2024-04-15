@@ -20,8 +20,7 @@ fn extract_endpoint(s: &String) -> Result<EndpointCore> {
     let regex_method_path: Regex = Regex::new(r"^(?<method>[A-Z]+)\s+(?<path>.+)$")?;
 
     let captured_result = regex_method_path.captures(s).context(format!(
-        "Could not parse endpoint '{}' (should be like 'METHOD /path/to/resource')",
-        s
+        "Could not parse endpoint '{s}' (should be like 'METHOD /path/to/resource')"
     ))?;
 
     let (_, [method_raw, path_raw]) = captured_result.extract();
@@ -44,7 +43,7 @@ fn extract_rule(
         Response::File(path) => {
             let file = data
                 .get(&path)
-                .context(format!("Getting file content of '{}'", path))?;
+                .context(format!("Getting file content of '{path}'"))?;
             (
                 StatusCode::from_u16(file.status)
                     .context(format!("Parsing file status '{}'", file.status))?,
@@ -55,7 +54,7 @@ fn extract_rule(
             )
         }
         Response::Inline(status, body, format) => (
-            StatusCode::from_u16(status).context(format!("Parsing file status '{}'", status))?,
+            StatusCode::from_u16(status).context(format!("Parsing file status '{status}'"))?,
             body.and_then(|b| if b.is_empty() { None } else { Some(b) }),
             format,
         ),
@@ -116,7 +115,7 @@ fn extract_api_shape(api_shape: &ApiShapeYaml) -> Result<Vec<EndpointCore>> {
 }
 
 pub fn build_api_set(
-    name: String,
+    name: &String,
     shape: &Option<ApiShapeYaml>,
     apis: &[ApiYaml],
     proxy: &Option<ProxyYaml>,
@@ -130,8 +129,8 @@ pub fn build_api_set(
     let proxy_core = match proxy {
         Some(p) => {
             let uri = Uri::try_from(p.url.clone()).context(format!(
-                "Parsing url '{}' while building api_set '{}'",
-                p.url, name
+                "Parsing url '{}' while building api_set '{name}'",
+                p.url
             ))?;
             Some(ProxyCore(uri))
         }
@@ -141,13 +140,11 @@ pub fn build_api_set(
     let shape_core = match shape {
         Some(s) => {
             let shape = extract_api_shape(s).context(format!(
-                "Extracting api shape while building api_set '{}'",
-                &name
+                "Extracting api shape while building api_set '{name}'"
             ))?;
             for (pos, api) in apis_core.iter().enumerate() {
-                validate_api_with_shape(&name, &shape, api).context(format!(
-                    "Validating api '{}' against shape while building api_set '{}'",
-                    pos, &name
+                validate_api_with_shape(name, &shape, api).context(format!(
+                    "Validating api '{pos}' against shape while building api_set '{name}'"
                 ))?
             }
             Some(shape)
@@ -156,7 +153,7 @@ pub fn build_api_set(
     };
 
     Ok(ApiSetCore {
-        name,
+        name: name.to_owned(),
         shape: shape_core,
         proxy: proxy_core,
         apis: apis_core,
@@ -166,8 +163,7 @@ pub fn build_api_set(
 pub fn validate_api_with_shape(name: &String, shape: &[EndpointCore], api: &ApiCore) -> Result<()> {
     if shape.len() != api.0.len() {
         bail!(
-            "Api name: {}\n -> Shape and api don’t have the same number of endpoints: {} != {}",
-            name,
+            "Api name: {name}\n -> Shape and api don’t have the same number of endpoints: {} != {}",
             shape.len(),
             api.0.len()
         );
@@ -179,7 +175,7 @@ pub fn validate_api_with_shape(name: &String, shape: &[EndpointCore], api: &ApiC
         let shape_rule_implemented_by_api = api.0.iter().any(|rule| rule.endpoint == el.clone());
 
         if !shape_rule_implemented_by_api {
-            messages.push_front(format!("Api does not implement shape rule '{}'", el))
+            messages.push_front(format!("Api does not implement shape rule '{el}'"))
         }
     }
 
@@ -199,8 +195,7 @@ pub fn validate_api_with_shape(name: &String, shape: &[EndpointCore], api: &ApiC
 
     if !messages.is_empty() {
         bail!(
-            "Api name: {}\n -> Shape/api contract mismatch:\n - {}",
-            name,
+            "Api name: {name}\n -> Shape/api contract mismatch:\n - {}",
             messages.iter().join("\n - ")
         );
     }
@@ -209,6 +204,8 @@ pub fn validate_api_with_shape(name: &String, shape: &[EndpointCore], api: &ApiC
 }
 
 pub fn build_root_api_set(system: &SystemFolder) -> Result<ApiSetRootCore> {
+    let system_name = &system.name;
+
     let apis_core: Vec<ApiCore> = system
         .apis
         .iter()
@@ -218,8 +215,8 @@ pub fn build_root_api_set(system: &SystemFolder) -> Result<ApiSetRootCore> {
     let proxy_core = match &system.proxy {
         Some(p) => {
             let uri = Uri::try_from(p.url.clone()).context(format!(
-                "Parsing url '{}' while building root api_set of system '{}'",
-                p.url, &system.name
+                "Parsing url '{}' while building root api_set of system '{system_name}'",
+                p.url
             ))?;
             Some(ProxyCore(uri))
         }
@@ -229,14 +226,11 @@ pub fn build_root_api_set(system: &SystemFolder) -> Result<ApiSetRootCore> {
     let shape_core = match &system.shape {
         Some(s) => {
             let shape = extract_api_shape(s).context(format!(
-                "Extracting api shape while building root api_set of system '{}'",
-                &system.name
+                "Extracting api shape while building root api_set of system '{system_name}'"
             ))?;
             for (pos, api) in apis_core.iter().enumerate() {
                 validate_api_with_shape(&system.name, &shape, api).context(format!(
-                    "Validating api '{}' against shape while building root api_set of system '{}'",
-                    pos,
-                    system.name.clone()
+                    "Validating api '{pos}' against shape while building root api_set of system '{system_name}'"
                 ))?
             }
             Some(shape)
@@ -271,7 +265,7 @@ impl ConfFolder {
                             .chain(system.data.clone())
                             .collect();
                         build_api_set(
-                            format!("{}/{}", system.name, f.name),
+                            &format!("{}/{}", system.name, f.name),
                             &f.shape,
                             &f.apis,
                             &f.proxy,
