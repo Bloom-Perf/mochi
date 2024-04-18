@@ -131,8 +131,7 @@ impl ConfigurationFolder {
                 let fs_api_path = fs_api.path.display().to_string();
                 ConfigurationFolder::load_fs_api_folder(fs_api)
                     .context(format!(
-                        "Failed to decode api folder '{}' in system folder '{}'",
-                        fs_api_path, system_path
+                        "Failed to decode api folder '{fs_api_path}' in system folder '{system_path}'"
                     ))
                     .map_err(|e| error!("{:?}", e))
                     .ok()

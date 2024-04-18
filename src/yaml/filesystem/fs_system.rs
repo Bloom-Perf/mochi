@@ -12,9 +12,9 @@ pub struct FsSystem {
 }
 
 impl FsSystem {
-    const API_FILE_PREFIX: &'static str = "api";
-    const SHAPE_FILE_PREFIX: &'static str = "shape";
-    const PROXY_FILE_PREFIX: &'static str = "proxy";
+    pub const API_FILE_PREFIX: &'static str = "api";
+    pub const SHAPE_FILE_PREFIX: &'static str = "shape";
+    pub const PROXY_FILE_PREFIX: &'static str = "proxy";
 
     pub fn new(path: PathBuf) -> FsSystem {
         FsSystem { path }

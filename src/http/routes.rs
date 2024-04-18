@@ -2,8 +2,8 @@ use crate::core::{ApiCore, ConfCore, HttpRoute, LatencyCore, RuleBodyCore, RuleC
 use axum::body::Body;
 use axum::http::{Request, StatusCode, Uri};
 
-use crate::metrics::MochiMetrics;
 use crate::template::render::rule_body_to_str;
+use crate::MochiRouterState;
 use anyhow::Context;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
@@ -34,7 +34,7 @@ async fn generate_response_body(
     }
 }
 
-pub async fn handle_request<'reg>(request: Request<Body>, rules: Vec<RuleCore>) -> Response<Body> {
+pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Response<Body> {
     for rule in rules.iter() {
         // All api headers must match the corresponding headers in the received request
         let matching_request = rule.headers.iter().all(|(key, value)| {
@@ -107,7 +107,7 @@ impl SystemCore {
 }
 
 async fn handler404(
-    State(metrics): State<MochiMetrics>,
+    State(s): State<MochiRouterState>,
     request: Request<Body>,
     system_name: String,
 ) -> Response {
@@ -117,7 +117,7 @@ async fn handler404(
         request.uri(),
         system_name
     );
-    metrics.mochi_route_not_found(system_name);
+    s.metrics.mochi_route_not_found(system_name);
     StatusCode::NOT_FOUND.into_response()
 }
 
@@ -160,7 +160,10 @@ async fn handle_proxy_request(
 }
 
 impl ConfCore {
-    pub fn build_router(&self, initial_router: Router<MochiMetrics>) -> Router<MochiMetrics> {
+    pub fn build_router(
+        &self,
+        initial_router: Router<MochiRouterState>,
+    ) -> Router<MochiRouterState> {
         self.systems
             .iter()
             .fold(initial_router, move |r, system| {
@@ -180,7 +183,7 @@ impl ConfCore {
                             }),
                         )
                     })
-                    .fallback(move |m: State<MochiMetrics>, r: Request<Body>| {
+                    .fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
                         handler404(m, r, system_name_subrouter)
                     });
 
@@ -211,14 +214,14 @@ impl ConfCore {
                             }
                             None => acc,
                         })
-                        .fallback(move |m: State<MochiMetrics>, r: Request<Body>| {
+                        .fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
                             handler404(m, r, system_name_subrouter)
                         });
 
                 r.nest(&format!("/static/{}", system.name), subrouter)
                     .nest(&format!("/proxy/{}", system.name), proxy_router)
             })
-            .fallback(move |m: State<MochiMetrics>, r: Request<Body>| {
+            .fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
                 handler404(m, r, "Mochi System".to_string())
             })
     }
