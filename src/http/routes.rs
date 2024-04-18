@@ -193,7 +193,7 @@ impl ConfCore {
                         .fold(Router::new(), move |acc, api| match &api.proxy {
                             Some(p) => {
                                 let url = p.0.clone();
-                                acc.route_service(
+                                acc.route(
                                 &format!("/{}/*path", api.name),
                                 any(move |method: Method,
                                        uri: Uri,

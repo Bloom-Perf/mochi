@@ -1,7 +1,7 @@
 use crate::yaml::filesystem::fs_api::FsApi;
 use crate::yaml::filesystem::fs_data::FsData;
 use crate::yaml::filesystem::fs_system_file::FsSystemFile;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use log::{debug, warn};
 use std::fs;
 use std::fs::DirEntry;
@@ -20,6 +20,18 @@ impl FsSystem {
         FsSystem { path }
     }
 
+    pub fn get_name(&self) -> Result<String> {
+        let filename = self.path.file_name().context(format!(
+            "Resolving api folder name from path '{}'",
+            self.path.display()
+        ))?;
+
+        match filename.to_os_string().into_string() {
+            Ok(res) => Ok(res),
+            Err(e) => bail!("Converting OsString '{}' into String", e.to_string_lossy()),
+        }
+    }
+
     // Entries loaded per system FOLDER (./config/system/*)
     fn get_entries(&self) -> Result<Vec<DirEntry>> {
         debug!(
@@ -27,7 +39,7 @@ impl FsSystem {
             self.path.display()
         );
 
-        Ok(fs::read_dir(self.path.clone())
+        Ok(fs::read_dir(&self.path)
             .context(format!(
                 "Could not read directory for system '{}'",
                 self.path.display()

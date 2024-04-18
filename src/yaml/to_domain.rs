@@ -264,13 +264,7 @@ impl ConfFolder {
                             .into_iter()
                             .chain(system.data.clone())
                             .collect();
-                        build_api_set(
-                            &format!("{}/{}", system.name, f.name),
-                            &f.shape,
-                            &f.apis,
-                            &f.proxy,
-                            &merged_data_folders,
-                        )
+                        build_api_set(&f.name, &f.shape, &f.apis, &f.proxy, &merged_data_folders)
                     })
                     .collect::<Result<Vec<_>>>()?;
                 Ok(SystemCore {

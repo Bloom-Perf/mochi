@@ -107,7 +107,7 @@ impl ConfigurationFolder {
                 });
 
         Ok(ApiFolder {
-            name: api_path.to_string(),
+            name: fs_api.get_name()?,
             apis,
             shape,
             proxy,
@@ -184,7 +184,7 @@ impl ConfigurationFolder {
                 });
 
         Ok(SystemFolder {
-            name: fs_system.path.display().to_string(),
+            name: fs_system.get_name()?,
             api_folders,
             apis,
             shape,
