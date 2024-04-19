@@ -1,14 +1,15 @@
 use crate::core::{ApiCore, ConfCore, HttpRoute, LatencyCore, RuleBodyCore, RuleCore, SystemCore};
 use axum::body::Body;
-use axum::http::{Request, StatusCode, Uri};
+use axum::http::{HeaderValue, Request, StatusCode, Uri};
 
 use crate::template::render::rule_body_to_str;
 use crate::MochiRouterState;
 use anyhow::Context;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{any, on, MethodFilter};
+use axum::routing::{any, get, on, MethodFilter};
 use axum::Router;
+use itertools::Itertools;
 use log::{debug, warn};
 use reqwest::Method;
 use std::collections::HashMap;
@@ -130,6 +131,8 @@ async fn handler404(
     StatusCode::NOT_FOUND.into_response()
 }
 
+//fn register_request_response_into_proxy_state()
+
 async fn handle_proxy_request(
     request_method: Method,
     request_uri: Uri,
@@ -155,17 +158,23 @@ async fn handle_proxy_request(
         .send()
         .await
         .context(format!(
-            "Sending request / receiving response from {target_url}"
+            "Sending request/receiving response from {target_url}"
         ))?;
 
     Response::builder()
         .status(response.status())
         .header(
             "Content-Type",
-            response.headers().get("Content-Type").unwrap(),
+            response
+                .headers()
+                .get("Content-Type")
+                .unwrap_or(&HeaderValue::from_static("text/plain")),
         )
-        .body(Body::from(response.bytes().await.unwrap()))
-        .context("Build response")
+        .body(Body::from(response.bytes().await.context(format!(
+            "Getting bytes from http client response (from {})",
+            &reconstructed_uri
+        ))?))
+        .context("Building response to http server request")
 }
 
 impl ConfCore {
@@ -173,65 +182,100 @@ impl ConfCore {
         &self,
         initial_router: Router<MochiRouterState>,
     ) -> Router<MochiRouterState> {
-        self.systems
-            .iter()
-            .fold(initial_router, move |r, system| {
-                let system_name_subrouter = system.name.clone();
+        let mut global_router: Router<MochiRouterState> = initial_router;
 
-                // static sub router built from the ./config folder
-                let subrouter = system
-                    .generate_rules_map()
-                    .into_iter()
-                    .fold(Router::new(), |acc, (endpoint, rules)| {
-                        acc.route(
-                            &endpoint.route,
-                            on(MethodFilter::try_from(endpoint.clone().method).unwrap(), {
-                                move |request: Request<Body>| {
-                                    handle_request(request, rules.to_owned())
+        for system in self.systems.iter() {
+            let system_name = system.name.clone();
+
+            // static sub router built from the ./config folder
+            let subrouter = system
+                .generate_rules_map()
+                .into_iter()
+                .fold(Router::new(), |acc, (endpoint, rules)| {
+                    acc.route(
+                        &endpoint.route,
+                        on(MethodFilter::try_from(endpoint.method).unwrap(), {
+                            move |request: Request<Body>| handle_request(request, rules.to_owned())
+                        }),
+                    )
+                })
+                .fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
+                    handler404(m, r, system_name)
+                });
+
+            // Proxy setup
+
+            let mut proxy_router: Router<MochiRouterState> = Router::new();
+
+            for api in system.api_sets.iter() {
+                if let Some(p) = &api.proxy {
+                    let url = p.0.clone();
+                    let system_name = system.name.clone();
+                    let api_name = api.name.clone();
+
+                    proxy_router = proxy_router.route(
+                        "/config",
+                        get(|State(s): State<MochiRouterState>| async move {
+                            let state = s.proxy.read().unwrap();
+                            state
+                                .routes
+                                .iter()
+                                .map(|r| r.display(0))
+                                .format("\n")
+                                .to_string()
+                                .into_response()
+                        }),
+                    );
+
+                    proxy_router = proxy_router.route(
+                        &format!("/{}/*path", &api_name),
+                        any(
+                            move |s: State<MochiRouterState>,
+                                  method: Method,
+                                  uri: Uri,
+                                  Path(path): Path<String>,
+                                  body: String| async move {
+                                s.metrics.mochi_proxy_request_counter(
+                                    system_name,
+                                    Some(api_name),
+                                    url.to_string(),
+                                );
+
+                                let _ = s.proxy.write().map(|mut w| {
+                                    w.append_path(
+                                        &path.split("/").map(|chunk| chunk.to_string()).collect(),
+                                    )
+                                });
+
+                                dbg!(&s.proxy);
+
+                                match handle_proxy_request(method, uri, url, path, body).await {
+                                    Ok(content) => Ok::<_, Infallible>(content),
+                                    Err(e) => Ok::<_, Infallible>(
+                                        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                                            .into_response(),
+                                    ),
                                 }
-                            }),
-                        )
-                    })
-                    .fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
-                        handler404(m, r, system_name_subrouter)
-                    });
+                            },
+                        ),
+                    )
+                }
+            }
 
-                let system_name_subrouter = system.name.clone();
+            let system_name = system.name.clone();
 
-                let proxy_router =
-                    system
-                        .api_sets
-                        .iter()
-                        .fold(Router::new(), move |acc, api| match &api.proxy {
-                            Some(p) => {
-                                let url = p.0.clone();
-                                acc.route(
-                                &format!("/{}/*path", api.name),
-                                any(move |method: Method,
-                                       uri: Uri,
-                                       Path(path): Path<String>,
-                                       body: String| async {
-                                    match handle_proxy_request(method, uri, url, path, body).await {
-                                        Ok(content) => Ok::<_, Infallible>(content),
-                                        Err(e) => Ok::<_, Infallible>(
-                                            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-                                                .into_response(),
-                                        ),
-                                    }
-                                }),
-                            )
-                            }
-                            None => acc,
-                        })
-                        .fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
-                            handler404(m, r, system_name_subrouter)
-                        });
+            proxy_router =
+                proxy_router.fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
+                    handler404(m, r, system_name)
+                });
 
-                r.nest(&format!("/static/{}", system.name), subrouter)
-                    .nest(&format!("/proxy/{}", system.name), proxy_router)
-            })
-            .fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
-                handler404(m, r, "Mochi System".to_string())
-            })
+            global_router = global_router
+                .nest(&format!("/static/{}", &system.name), subrouter)
+                .nest(&format!("/proxy/{}", &system.name), proxy_router)
+        }
+
+        global_router.fallback(move |m: State<MochiRouterState>, r: Request<Body>| {
+            handler404(m, r, "Mochi System".to_string())
+        })
     }
 }

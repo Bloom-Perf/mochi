@@ -4,6 +4,7 @@ use opentelemetry::KeyValue;
 #[derive(Clone)]
 pub struct MochiMetrics {
     mochi_route_not_found_counter: opentelemetry::metrics::Counter<u64>,
+    mochi_proxy_request_counter: opentelemetry::metrics::Counter<u64>,
 }
 
 impl MochiMetrics {
@@ -14,11 +15,28 @@ impl MochiMetrics {
 
         MochiMetrics {
             mochi_route_not_found_counter: my_meter.u64_counter("mochi_route_not_found").init(),
+            mochi_proxy_request_counter: my_meter.u64_counter("mochi_proxy_request_counter").init(),
         }
     }
 
     pub fn mochi_route_not_found(&self, system: String) {
         self.mochi_route_not_found_counter
             .add(1, &[KeyValue::new("system", system)])
+    }
+
+    pub fn mochi_proxy_request_counter(
+        &self,
+        system: String,
+        api: Option<String>,
+        proxy_uri: String,
+    ) {
+        self.mochi_route_not_found_counter.add(
+            1,
+            &[
+                KeyValue::new("system", system),
+                KeyValue::new("api", api.unwrap_or("root".to_string())),
+                KeyValue::new("uri", proxy_uri),
+            ],
+        )
     }
 }
