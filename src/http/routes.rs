@@ -16,21 +16,23 @@ use std::convert::Infallible;
 use std::time::Duration;
 use tokio::time::sleep;
 
-async fn compute_latency(latency: LatencyCore) {
+async fn compute_latency(latency: &LatencyCore) {
     match latency {
-        LatencyCore::Constant(v) => sleep(Duration::from_millis(v.into())).await,
+        LatencyCore::Constant(v) => sleep(Duration::from_millis(v.clone().into())).await,
     }
 }
 
 async fn generate_response_body(
     request: Request<Body>,
-    rule_body_core: Option<RuleBodyCore>,
-) -> Body {
+    rule_body_core: &Option<RuleBodyCore>,
+) -> anyhow::Result<Body> {
     match rule_body_core {
-        None => Body::empty(),
-        Some(rule_body_core) => {
-            Body::from(rule_body_to_str(request, rule_body_core).await.unwrap())
-        }
+        None => Ok(Body::empty()),
+        Some(rule_body_core) => Ok(Body::from(
+            rule_body_to_str(request, rule_body_core)
+                .await
+                .context("Generating response body")?,
+        )),
     }
 }
 
@@ -46,17 +48,24 @@ pub async fn handle_request(request: Request<Body>, rules: Vec<RuleCore>) -> Res
         });
 
         if matching_request {
-            if let Some(value) = rule.latency.clone() {
+            if let Some(value) = &rule.latency {
                 compute_latency(value).await
             };
 
-            let body = generate_response_body(request, rule.body.clone()).await;
+            let body = generate_response_body(request, &rule.body).await;
 
-            return Response::builder()
-                .header("Content-Type", rule.format.to_owned())
-                .status(rule.status)
-                .body(body)
-                .unwrap();
+            return match body {
+                Ok(b) => Response::builder()
+                    .header("Content-Type", rule.format.to_owned())
+                    .status(rule.status)
+                    .body(b)
+                    .unwrap(),
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Could not generate response body: {:#?}", e),
+                )
+                    .into_response(),
+            };
         }
     }
     StatusCode::NOT_FOUND.into_response()
@@ -73,7 +82,7 @@ impl SystemCore {
             for rule in rules.iter() {
                 // dbg!(rule.clone());
                 let http_route = HttpRoute {
-                    route: format!("{}", rule.endpoint.route.to_owned()),
+                    route: rule.endpoint.route.to_string(),
                     method: rule.endpoint.method.to_owned(),
                 };
 
@@ -90,7 +99,7 @@ impl SystemCore {
                 for rule in rules.iter() {
                     // dbg!(rule.clone());
                     let http_route = HttpRoute {
-                        route: format!("/{}{}", api_set.name, rule.endpoint.route.to_owned()),
+                        route: format!("/{}{}", api_set.name, rule.endpoint.route.to_string()),
                         method: rule.endpoint.method.to_owned(),
                     };
 

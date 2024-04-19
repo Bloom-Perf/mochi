@@ -1,11 +1,11 @@
 use handlebars::template::Parameter;
 
 pub mod constants {
-    pub const HEADERS: &str = "headers";
-    pub const URL_QUERY: &str = "url.query";
-    pub const URL_PATH: &str = "url.path";
-    pub const BODY_JSON: &str = "body.json";
-    pub const BODY_TEXT: &str = "body.text";
+    pub const HEADERS: &'static str = "headers";
+    pub const URL_QUERY: &'static str = "url.query";
+    pub const URL_PATH: &'static str = "url.path";
+    pub const BODY_JSON: &'static str = "body.json";
+    pub const BODY_TEXT: &'static str = "body.text";
 }
 
 pub trait HasVariables {
