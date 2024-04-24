@@ -26,16 +26,18 @@ impl MochiMetrics {
 
     pub fn mochi_proxy_request_counter(
         &self,
-        system: String,
-        api: Option<String>,
-        proxy_uri: String,
+        system: &String,
+        api: Option<&String>,
+        proxy_uri: &String,
+        path: &String,
     ) {
         self.mochi_route_not_found_counter.add(
             1,
             &[
-                KeyValue::new("system", system),
-                KeyValue::new("api", api.unwrap_or("root".to_string())),
-                KeyValue::new("uri", proxy_uri),
+                KeyValue::new("system", system.clone()),
+                KeyValue::new("api", (api.unwrap_or(&"root".to_string())).clone()),
+                KeyValue::new("uri", proxy_uri.clone()),
+                KeyValue::new("path", path.clone()),
             ],
         )
     }
