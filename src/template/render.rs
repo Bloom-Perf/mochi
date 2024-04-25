@@ -1,7 +1,7 @@
 use crate::core::RuleBodyCore;
 use crate::template::helper_xpath::XPATH_HELPER;
 use crate::template::parameter::TemplateParameterExtractor;
-use crate::template::variables::HasVariables;
+use crate::template::variables::{FindVariables, HasVariables};
 use anyhow::{Context, Result};
 use axum::body::Body;
 use axum::extract::{FromRequestParts, Path, Query, Request};
@@ -24,13 +24,9 @@ pub fn rule_body_from_str(content: String) -> RuleBodyCore {
         Some(template) => match template.elements.as_slice() {
             [TemplateElement::RawString(e)] => RuleBodyCore::Plain(e.to_owned()),
             _ => {
-                let parameters = template.extract_parameters();
+                let parameters = template.extract_parameters().find_present_variables();
                 RuleBodyCore::Templated {
-                    url_query: parameters.has_url_query(),
-                    url_path: parameters.has_url_path(),
-                    headers: parameters.has_headers(),
-                    request_body_text: parameters.has_body_text(),
-                    request_body_json: parameters.has_body_json(),
+                    has_variables: parameters,
                     registry,
                 }
             }
@@ -42,11 +38,7 @@ pub fn rule_body_from_str(content: String) -> RuleBodyCore {
 #[inline]
 pub async fn build_templated_response_body(
     registry: &Handlebars<'static>,
-    request_body_json: &bool,
-    request_body_text: &bool,
-    url_path: &bool,
-    url_query: &bool,
-    headers: &bool,
+    has_variables: &HasVariables,
     request: Request<Body>,
 ) -> Result<String> {
     let (mut parts, body) = request.into_parts();
@@ -59,19 +51,19 @@ pub async fn build_templated_response_body(
         ))?
         .to_bytes();
 
-    let req_body_json: Option<Value> = if *request_body_json {
+    let req_body_json: Option<Value> = if has_variables.has_body_json {
         serde_json::from_slice(bytes.as_ref()).ok()
     } else {
         None
     };
 
-    let req_body_text: Option<String> = if *request_body_text {
+    let req_body_text: Option<String> = if has_variables.has_body_text {
         String::from_utf8(bytes.to_vec()).ok()
     } else {
         None
     };
 
-    let json_headers: Option<Value> = if *headers {
+    let json_headers: Option<Value> = if has_variables.has_headers {
         let mut headers_map = HashMap::<String, String>::new();
 
         for (key, value) in parts.headers.iter() {
@@ -92,7 +84,7 @@ pub async fn build_templated_response_body(
         None
     };
 
-    let url_query_params: Option<Value> = if *url_query {
+    let url_query_params: Option<Value> = if has_variables.has_url_query {
         let Query(query_params): Query<HashMap<String, String>> = Query::try_from_uri(&parts.uri)
             .context(format!(
             "Parsing query parameters of uri [{}] {}",
@@ -104,7 +96,7 @@ pub async fn build_templated_response_body(
         None
     };
 
-    let url_path_params: Option<Value> = if *url_path {
+    let url_path_params: Option<Value> = if has_variables.has_url_path {
         let Path(path_params): Path<HashMap<String, String>> =
             Path::from_request_parts(&mut parts, &())
                 .await

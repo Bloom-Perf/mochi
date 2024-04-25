@@ -24,25 +24,13 @@ impl RuleBodyCore {
         Ok(Body::from(match self {
             RuleBodyCore::Plain(content) => content.clone(),
             RuleBodyCore::Templated {
-                headers,
-                url_path,
-                url_query,
-                request_body_json,
-                request_body_text,
+                has_variables,
                 registry,
-            } => build_templated_response_body(
-                registry,
-                request_body_json,
-                request_body_text,
-                url_path,
-                url_query,
-                headers,
-                request,
-            )
-            .await
-            .context(format!(
-                "Generating response body for request received on [{method}] {uri}"
-            ))?,
+            } => build_templated_response_body(registry, has_variables, request)
+                .await
+                .context(format!(
+                    "Generating response body for request received on [{method}] {uri}"
+                ))?,
         }))
     }
 }

@@ -1,3 +1,4 @@
+use crate::template::variables::HasVariables;
 use axum::http::uri::PathAndQuery;
 use axum::http::{Method, StatusCode, Uri};
 use handlebars::Handlebars;
@@ -42,11 +43,7 @@ pub struct RuleContentFeaturesCore {
 pub enum RuleBodyCore {
     Plain(String),
     Templated {
-        headers: bool,
-        url_path: bool,
-        url_query: bool,
-        request_body_json: bool,
-        request_body_text: bool,
+        has_variables: HasVariables,
         registry: Handlebars<'static>,
     },
 }

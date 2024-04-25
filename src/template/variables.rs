@@ -8,51 +8,58 @@ pub mod constants {
     pub const BODY_TEXT: &'static str = "body.text";
 }
 
-pub trait HasVariables {
-    fn has_headers(&self) -> bool;
-    fn has_url_query(&self) -> bool;
-    fn has_url_path(&self) -> bool;
-    fn has_body_json(&self) -> bool;
-    fn has_body_text(&self) -> bool;
+#[derive(Clone, Debug)]
+pub struct HasVariables {
+    pub has_headers: bool,
+    pub has_url_query: bool,
+    pub has_url_path: bool,
+    pub has_body_json: bool,
+    pub has_body_text: bool,
 }
 
-impl HasVariables for Vec<Parameter> {
-    fn has_headers(&self) -> bool {
-        self.iter().any(|p| {
-            p.as_name()
-                .unwrap_or_default()
-                .starts_with(constants::HEADERS)
-        })
-    }
-    fn has_url_query(&self) -> bool {
-        self.iter().any(|p| {
-            p.as_name()
-                .unwrap_or_default()
-                .starts_with(constants::URL_QUERY)
-        })
-    }
+pub trait FindVariables {
+    fn find_present_variables(&self) -> HasVariables;
+}
 
-    fn has_url_path(&self) -> bool {
-        self.iter().any(|p| {
-            p.as_name()
-                .unwrap_or_default()
-                .starts_with(constants::URL_PATH)
-        })
-    }
+impl FindVariables for Vec<Parameter> {
+    fn find_present_variables(&self) -> HasVariables {
+        let mut has_variables = HasVariables {
+            has_headers: false,
+            has_url_query: false,
+            has_url_path: false,
+            has_body_json: false,
+            has_body_text: false,
+        };
 
-    fn has_body_json(&self) -> bool {
-        self.iter().any(|p| {
-            p.as_name()
-                .unwrap_or_default()
-                .starts_with(constants::BODY_JSON)
-        })
-    }
+        for p in self.iter() {
+            let name = p.as_name().unwrap_or_default();
 
-    fn has_body_text(&self) -> bool {
-        self.iter().any(|p| {
-            p.as_name()
-                .unwrap_or_default()
-                .starts_with(constants::BODY_TEXT)
-        })
+            if name.starts_with(constants::HEADERS) {
+                has_variables.has_headers = true;
+                continue;
+            }
+
+            if name.starts_with(constants::URL_QUERY) {
+                has_variables.has_url_query = true;
+                continue;
+            }
+
+            if name.starts_with(constants::URL_PATH) {
+                has_variables.has_url_path = true;
+                continue;
+            }
+
+            if name.starts_with(constants::BODY_JSON) {
+                has_variables.has_body_json = true;
+                continue;
+            }
+
+            if name.starts_with(constants::BODY_TEXT) {
+                has_variables.has_body_text = true;
+                continue;
+            }
+        }
+
+        has_variables
     }
 }
