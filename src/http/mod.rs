@@ -5,8 +5,9 @@ use axum::http::{Request, StatusCode};
 use axum::response::{IntoResponse, Response};
 use log::warn;
 
-pub mod proxy;
+pub mod r#proxy;
 pub mod routes;
+mod r#static;
 
 pub async fn handler404(
     State(s): State<MochiRouterState>,
@@ -21,4 +22,8 @@ pub async fn handler404(
     );
     s.metrics.mochi_route_not_found(system_name);
     StatusCode::NOT_FOUND.into_response()
+}
+
+trait MochiRequestHandler<Req = Body, Res = Body> {
+    async fn handle_request(&self, request: Request<Req>) -> anyhow::Result<Response<Res>>;
 }

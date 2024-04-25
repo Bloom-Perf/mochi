@@ -31,7 +31,7 @@ impl MochiMetrics {
         proxy_uri: &String,
         path: &String,
     ) {
-        self.mochi_route_not_found_counter.add(
+        self.mochi_proxy_request_counter.add(
             1,
             &[
                 KeyValue::new("system", system.clone()),

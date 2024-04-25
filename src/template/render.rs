@@ -39,105 +39,102 @@ pub fn rule_body_from_str(content: String) -> RuleBodyCore {
     }
 }
 
-pub async fn rule_body_to_str(request: Request<Body>, content: &RuleBodyCore) -> Result<String> {
-    match content {
-        RuleBodyCore::Plain(content) => Ok(content.clone()),
-        RuleBodyCore::Templated {
-            registry,
-            request_body_json,
-            request_body_text,
-            url_path,
-            url_query,
-            headers,
-        } => {
-            let (mut parts, body) = request.into_parts();
-            let bytes = body
-                .collect()
+#[inline]
+pub async fn build_templated_response_body(
+    registry: &Handlebars<'static>,
+    request_body_json: &bool,
+    request_body_text: &bool,
+    url_path: &bool,
+    url_query: &bool,
+    headers: &bool,
+    request: Request<Body>,
+) -> Result<String> {
+    let (mut parts, body) = request.into_parts();
+    let bytes = body
+        .collect()
+        .await
+        .context(format!(
+            "Collecting body of request with uri [{}] {}",
+            &parts.method, &parts.uri
+        ))?
+        .to_bytes();
+
+    let req_body_json: Option<Value> = if *request_body_json {
+        serde_json::from_slice(bytes.as_ref()).ok()
+    } else {
+        None
+    };
+
+    let req_body_text: Option<String> = if *request_body_text {
+        String::from_utf8(bytes.to_vec()).ok()
+    } else {
+        None
+    };
+
+    let json_headers: Option<Value> = if *headers {
+        let mut headers_map = HashMap::<String, String>::new();
+
+        for (key, value) in parts.headers.iter() {
+            let key_str = key.to_string();
+            let value_str = value
+                    .to_str()
+                    .context(format!(
+                        "Decoding header value associated with header key {} on request with uri [{}] {}",
+                        key_str,
+                        &parts.method, &parts.uri
+                    ))?
+                    .to_string();
+            headers_map.insert(key_str, value_str);
+        }
+
+        Some(json!(headers_map))
+    } else {
+        None
+    };
+
+    let url_query_params: Option<Value> = if *url_query {
+        let Query(query_params): Query<HashMap<String, String>> = Query::try_from_uri(&parts.uri)
+            .context(format!(
+            "Parsing query parameters of uri [{}] {}",
+            &parts.method, &parts.uri
+        ))?;
+
+        Some(json!(query_params))
+    } else {
+        None
+    };
+
+    let url_path_params: Option<Value> = if *url_path {
+        let Path(path_params): Path<HashMap<String, String>> =
+            Path::from_request_parts(&mut parts, &())
                 .await
                 .context(format!(
-                    "Collecting body of request with uri [{}] {}",
+                    "Parsing path parameters of uri [{}] {}",
                     &parts.method, &parts.uri
-                ))?
-                .to_bytes();
+                ))?;
 
-            let req_body_json: Option<Value> = if *request_body_json {
-                serde_json::from_slice(bytes.as_ref()).ok()
-            } else {
-                None
-            };
+        Some(json!(path_params))
+    } else {
+        None
+    };
 
-            let req_body_text: Option<String> = if *request_body_text {
-                String::from_utf8(bytes.to_vec()).ok()
-            } else {
-                None
-            };
-
-            let json_headers: Option<Value> = if *headers {
-                let mut headers_map = HashMap::<String, String>::new();
-
-                for (key, value) in parts.headers.iter() {
-                    let key_str = key.to_string();
-                    let value_str = value
-                        .to_str()
-                        .context(format!(
-                            "Decoding header value associated with header key {} on request with uri [{}] {}",
-                            key_str,
-                            &parts.method, &parts.uri
-                        ))?
-                        .to_string();
-                    headers_map.insert(key_str, value_str);
+    registry
+        .render(
+            TEMPLATE_KEY,
+            &json!({
+                "headers": json_headers,
+                "url": {
+                    "query": url_query_params,
+                    "path": url_path_params,
+                },
+                "body":{
+                    "json": req_body_json,
+                    "text": req_body_text
                 }
-
-                Some(json!(headers_map))
-            } else {
-                None
-            };
-
-            let url_query_params: Option<Value> = if *url_query {
-                let Query(query_params): Query<HashMap<String, String>> =
-                    Query::try_from_uri(&parts.uri).context(format!(
-                        "Parsing query parameters of uri [{}] {}",
-                        &parts.method, &parts.uri
-                    ))?;
-
-                Some(json!(query_params))
-            } else {
-                None
-            };
-
-            let url_path_params: Option<Value> = if *url_path {
-                let Path(path_params): Path<HashMap<String, String>> =
-                    Path::from_request_parts(&mut parts, &())
-                        .await
-                        .context(format!(
-                            "Parsing path parameters of uri [{}] {}",
-                            &parts.method, &parts.uri
-                        ))?;
-
-                Some(json!(path_params))
-            } else {
-                None
-            };
-
-            registry
-                .render(
-                    TEMPLATE_KEY,
-                    &json!({
-                        "headers": json_headers,
-                        "url": {
-                            "query": url_query_params,
-                            "path": url_path_params,
-                        },
-                        "body":{
-                            "json": req_body_json,
-                            "text": req_body_text
-                        }
-                    }),
-                )
-                .context(format!(
-                    "Rendering template of uri [{}] {}",
-                    &parts.method, &parts.uri
-                ))
-        }
-    }
+            }),
+        )
+        .context(format!(
+            "Rendering template of uri [{}] {}",
+            &parts.method, &parts.uri
+        ))
 }

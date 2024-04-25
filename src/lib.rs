@@ -4,9 +4,6 @@ use crate::yaml::from_files::ConfigurationFolder;
 use anyhow::Result;
 use axum::Router;
 use axum_otel_metrics::HttpMetricsLayerBuilder;
-use http_body_util::BodyExt;
-use itertools::Itertools;
-use std::fmt::Debug;
 use std::sync::{Arc, RwLock};
 
 mod core;
