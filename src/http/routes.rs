@@ -1,13 +1,30 @@
-use crate::core::{ConfCore, SystemCore};
+use crate::core::ConfCore;
 use axum::body::Body;
 use axum::http::Request;
+use std::sync::{Arc, RwLock};
 
 use crate::http::handler404;
-use crate::MochiRouterState;
+use crate::http::metrics::MochiMetrics;
+use crate::http::proxy::state::ProxyState;
 use axum::extract::State;
 use axum::Router;
 
-impl SystemCore {}
+#[derive(Clone)]
+pub struct MochiRouterState {
+    pub metrics: MochiMetrics,
+    pub proxy: Arc<RwLock<ProxyState>>,
+}
+
+impl MochiRouterState {
+    pub fn new() -> MochiRouterState {
+        let mochi_metrics = MochiMetrics::new();
+        let proxy_state = ProxyState::new();
+        MochiRouterState {
+            metrics: mochi_metrics,
+            proxy: Arc::new(RwLock::new(proxy_state)),
+        }
+    }
+}
 
 impl ConfCore {
     pub fn build_router(

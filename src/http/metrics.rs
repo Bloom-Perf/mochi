@@ -8,7 +8,7 @@ pub struct MochiMetrics {
 }
 
 impl MochiMetrics {
-    pub fn create() -> MochiMetrics {
+    pub fn new() -> MochiMetrics {
         let meter_provider = opentelemetry::global::meter_provider();
 
         let my_meter = meter_provider.meter("mochi");
