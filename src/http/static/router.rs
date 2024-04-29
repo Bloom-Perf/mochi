@@ -34,7 +34,7 @@ impl SystemCore {
             for ApiCore(rules) in api_set.apis.iter() {
                 for rule in rules.iter() {
                     let http_route = HttpRoute {
-                        route: format!("/{}{}", api_set.name, rule.endpoint.route.to_string()),
+                        route: format!("/{}{}", api_set.name, rule.endpoint.route),
                         method: rule.endpoint.method.to_owned(),
                     };
 
@@ -54,7 +54,7 @@ impl SystemCore {
         // static sub router built from the ./config folder
         for (HttpRoute { route, method }, rules) in self.generate_rules_map().into_iter() {
             router = router.route(
-                &*route,
+                &route,
                 on(MethodFilter::try_from(method.clone()).unwrap(), {
                     move |request: Request<Body>| async move {
                         match rules.handle_request(request).await {

@@ -11,7 +11,7 @@ use tokio::time::sleep;
 impl LatencyCore {
     async fn compute_latency(&self) {
         match self {
-            LatencyCore::Constant(v) => sleep(Duration::from_millis(v.clone().into())).await,
+            LatencyCore::Constant(v) => sleep(Duration::from_millis((*v).into())).await,
         }
     }
 }

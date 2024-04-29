@@ -9,16 +9,16 @@ impl ProxyState {
     pub fn new() -> ProxyState {
         ProxyState { routes: vec![] }
     }
-    pub fn append_path(&mut self, path: &Vec<String>) {
+    pub fn append_path(&mut self, path: Vec<&str>) {
         let mut root = &mut self.routes;
 
-        for p in path.iter() {
-            let next_node_idx = ProxyState::get_child_idx(&root, p);
+        for &p in path.iter() {
+            let next_node_idx = ProxyState::get_child_idx(root, p);
 
             root = match next_node_idx {
                 Some(x) => &mut root[x].children,
                 None => {
-                    let new_node = NodePath::constant(p.clone());
+                    let new_node = NodePath::constant(p);
                     root.push(new_node);
                     &mut root.last_mut().unwrap().children
                 }
@@ -26,7 +26,7 @@ impl ProxyState {
         }
     }
 
-    fn get_child_idx(v: &Vec<NodePath>, curr_c: &String) -> Option<usize> {
+    fn get_child_idx(v: &[NodePath], curr_c: &str) -> Option<usize> {
         v.iter()
             .enumerate()
             .find(|(_, n)| n.value.eq(curr_c))
@@ -41,9 +41,9 @@ pub struct NodePath {
 }
 
 impl NodePath {
-    pub fn constant(str: String) -> NodePath {
+    pub fn constant(str: &str) -> NodePath {
         NodePath {
-            value: str,
+            value: str.to_string(),
             children: vec![],
         }
     }
@@ -51,7 +51,7 @@ impl NodePath {
     pub fn display(&self, offset: usize) -> String {
         format!(
             "{}{}\n{}",
-            repeat_n(" -> ", offset).into_iter().format(""),
+            repeat_n(" -> ", offset).format(""),
             &self.value,
             self.children
                 .iter()

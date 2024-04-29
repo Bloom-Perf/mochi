@@ -94,11 +94,10 @@ impl SystemCore {
                                 &path,
                             );
 
-                            let _ = s.proxy.write().map(|mut w| {
-                                w.append_path(
-                                    &path.split("/").map(|chunk| chunk.to_string()).collect(),
-                                )
-                            });
+                            let _ = s
+                                .proxy
+                                .write()
+                                .map(|mut w| w.append_path(path.split('/').collect()));
 
                             dbg!(&s.proxy);
 
