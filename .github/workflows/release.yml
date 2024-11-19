@@ -8,7 +8,7 @@ on:
 jobs:
   docker_publish:
     name: "Docker Publish"
-    runs-on: "ubuntu-22.04"
+    runs-on: "ubuntu-24.04"
     permissions: write-all
 
     steps:
