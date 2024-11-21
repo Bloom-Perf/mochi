@@ -1,4 +1,4 @@
-use opentelemetry::metrics::{Counter, Meter, MeterProvider};
+use opentelemetry::metrics::MeterProvider;
 use opentelemetry::KeyValue;
 
 #[derive(Clone)]
