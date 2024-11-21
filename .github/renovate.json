@@ -50,5 +50,5 @@
   ],
   "automergeType": "pr",
   "automergeStrategy": "squash",
-  "platformCommit": true
+  "platformCommit": "enabled"
 }
