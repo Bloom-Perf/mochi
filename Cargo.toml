@@ -32,3 +32,17 @@ indoc = "2.0.5"
 sxd-xpath = "0.4.2"
 sxd-document = "0.3.2"
 clap = { version = "4.0", features = ["derive", "env"] }
+
+[profile.release]
+# agressive optimization
+opt-level = 3         # max level optimization for performance
+lto = "fat"           # agressive Link Time Optimization
+codegen-units = 1     # one unit for all the code
+frame-pointer = "yes" # keep frame pointer for better performance
+debug = false         # no debug info
+strip = true          # rustc automatically strips debug symbols
+panic = "abort"       # set panic strategy to abort
+
+# Only if size is critical (potentially impacting performance)
+# opt-level = "z"       # optimize for size
+# lto = "thin"          # optimize for size
