@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 rust:1.82-alpine3.20 AS builder
+FROM --platform=linux/amd64 rust:1.82-alpine3.20@sha256:2f42ce0d00c0b14f7fd84453cdc93ff5efec5da7ce03ead6e0b41adb1fbe834e AS builder
 
 RUN apk add --no-cache clang lld musl-dev pkgconf openssl-dev openssl-libs-static
 
@@ -17,7 +17,7 @@ RUN touch /usr/src/mochi/src/main.rs
 
 RUN cargo build --target x86_64-unknown-linux-musl --release
 
-FROM --platform=linux/amd64 alpine:3.20
+FROM --platform=linux/amd64 alpine:3.20@sha256:1e42bbe2508154c9126d48c2b8a75420c3544343bf86fd041fb7527e017a4b4a
 
 WORKDIR /usr/local/bin
 COPY --from=builder /usr/src/mochi/target/x86_64-unknown-linux-musl/release/mochi ./
