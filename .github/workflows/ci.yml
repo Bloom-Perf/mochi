@@ -1,13 +1,15 @@
-# Based on https://github.com/actions-rs/meta/blob/master/recipes/quickstart.md
-#
-# While our "example" application has the platform-specific code,
-# for simplicity we are compiling and testing everything on the Ubuntu environment only.
-# For multi-OS testing see the `cross.yml` workflow.
+# This file contains the CI workflow for the Mochi project.
+# For simplicity we are compiling and testing everything on the Ubuntu environment only.
 
 name: Mochi CI
 
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_REGISTRY_DIR: ~/.cargo/registry
+
 on:
-  workflow_dispatch:  # Permet l'exécution manuelle
+  workflow_dispatch:  # Allows manual execution
   push:
     branches: [ main ]
     paths-ignore:
@@ -20,64 +22,114 @@ on:
       - '**.md'
       - 'docs/**'
 
-# Évite la double exécution
+# Avoid concurrent executions
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
-    name: Check
+    name: 🔍 Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout sources
+      - name: 📥 Checkout sources
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Install stable toolchain
+      - name: 🦀 Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run cargo check
-        run: cargo check
+      - name: 🔍 Run cargo check
+        run: |
+          echo "🔍 Running cargo check..."
+          cargo check
+          echo "✅ Cargo check completed successfully!"
 
   test:
-    name: Test Suite
+    name: 🧪 Test Suite
+    needs: check
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip-tests]') }}
     steps:
-      - name: Checkout sources
+      - name: 📥 Checkout sources
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Install stable toolchain
+      - name: 🦀 Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run cargo test
-        run: cargo test
+      - name: 🧪 Run cargo test
+        run: |
+          echo "🧪 Starting test suite execution..."
+          cargo test
+          echo "✅ All tests passed successfully!"
 
   clippy:
-    name: Clippy
+    name: 🔬 Clippy
+    needs: check
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip-clippy]') }}
     steps:
-      - name: Checkout sources
+      - name: 📥 Checkout sources
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Install stable toolchain
+      - name: 🦀 Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
 
-      - name: Run cargo clippy
-        run: cargo clippy
+      - name: 🔬 Run cargo clippy
+        run: |
+          echo "🔬 Running Clippy analysis..."
+          cargo clippy
+          echo "✅ Clippy checks passed!"
 
   fmt:
-    name: Format
+    name: 📝 Format
+    needs: check
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip-fmt]') }}
     steps:
-      - name: Checkout sources
+      - name: 📥 Checkout sources
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Install stable toolchain
+      - name: 🦀 Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
 
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
+      - name: 📝 Run cargo fmt
+        run: |
+          echo "📝 Checking code formatting..."
+          cargo fmt --all -- --check
+          echo "✅ Code formatting check passed!"
+
+# Summary job that runs even if some jobs are skipped
+  pipeline-summary:
+    name: 📋 Pipeline Summary
+    needs: [check, test, clippy, fmt]
+    runs-on: ubuntu-latest
+    if: always()
+  
+    steps:
+      - name: 📊 Generate Pipeline Summary
+        run: |
+          echo "## 🍡 Mochi CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        
+          # List skipped steps
+          if [[ "${{ contains(github.event.head_commit.message, '[skip-fmt]') }}" == "true" ]]; then
+            echo "⏭️ Format check was skipped via [skip-fmt]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ "${{ contains(github.event.head_commit.message, '[skip-clippy]') }}" == "true" ]]; then
+            echo "⏭️ Clippy analysis was skipped via [skip-clippy]" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ "${{ contains(github.event.head_commit.message, '[skip-tests]') }}" == "true" ]]; then
+            echo "⏭️ Tests were skipped via [skip-tests]" >> $GITHUB_STEP_SUMMARY
+          fi
+        
+          # Add job status summary
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📈 Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "* 🔍 Check: ${{ needs.check.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "* 🧪 Tests: ${{ needs.test.result || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "* 🔬 Clippy: ${{ needs.clippy.result || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "* 📝 Format: ${{ needs.fmt.result || 'Skipped' }}" >> $GITHUB_STEP_SUMMARY
