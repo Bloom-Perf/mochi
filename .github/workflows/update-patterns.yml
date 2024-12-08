@@ -76,7 +76,7 @@ jobs:
           python update_workflows.py
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7
         with:
           title: '🔧 chore: Update paths-ignore patterns'
           commit-message: '🔧 chore: Update paths-ignore patterns from repository variables [skip ci]'
