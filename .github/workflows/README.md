@@ -36,13 +36,15 @@ git commit -m "📝 docs: Format README [skip-fmt] [skip-clippy]"
 ## 🎯 Paths Ignore Management
 
 The CI workflow uses a repository variable to manage ignored paths.
+To update ignored paths, modify the `IGNORE_PATTERNS` variable in repository settings, and run
+the ``update-patterns`` pipeline.
 
 ### 📁 Structure
 
 ```plaintext
 .github/
   └── workflows/
-      └── mochi-ci.yml
+      └── update-patterns.yml
 ```
 
 ### ⚙️ Configuration
