@@ -3,6 +3,8 @@
 ![GitHub last commit (by committer)](https://img.shields.io/github/last-commit/bloom-perf/mochi?logo=github)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bloom-perf/mochi/ci.yml?style=flat&branch=main)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/bloom-perf/mochi/release.yml?label=publish)
+[![dependency status](https://deps.rs/repo/github/Bloom-Perf/mochi/status.svg?path=%2F)](https://deps.rs/repo/github/Bloom-Perf/mochi?path=%2F)
+
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/bloom-perf/mochi?style=flat)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat)](https://opensource.org/licenses/Apache-2.0)
 
@@ -10,15 +12,24 @@ Simple &amp; fast mock server written in rust.
 
 ## Overview
 
-Mochi streamlines the mock server creation process, eliminating the need for ad hoc, basic applications just to set up a simple HTTP endpoint. It offers features like HandleBars templating for dynamic responses, yet maintains a focus on simplicity and ease of use. With Mochi, developers can quickly build effective mocks with an emphasis on thorough observability, making the development and testing process more efficient.
+Mochi provides a unified way to create mock HTTP endpoints for testing and development. Instead of writing ad hoc servers for each case, you define your endpoints in YAML files. The server automatically builds routes based on your configuration, supports dynamic templating for responses, and even enables proxying of requests when needed.
+
+## Problem Statement
+
+In many testing and development environments, you may need to simulate various API endpoints that return static or dynamic responses. Traditional ad hoc solutions are often hard to maintain and scale. Mochi addresses this problem by:
+
+- **Centralizing configuration:** Use structured YAML files to define endpoints, responses, and proxy rules.
+- **Simplifying setup:** Automatically generates the required HTTP routes, avoiding boilerplate code.
+- **Enabling flexibility:** Support both static responses and request proxying, along with dynamic templating for custom responses.
 
 ## Features
 
-- Fast, with a low footprint
-- Helm/Kubernetes/Docker ready
-- Simple Yaml API
-- OpenTelemetry ready
-- Templating with HandleBars
+- **Lightweight and fast:** Built in Rust with a low memory footprint.
+- **YAML-based configuration:** Define endpoints, headers, responses, and more in easy-to-read YAML files.
+- **Dual-mode routing:** Supports both static endpoints (predefined responses) and proxy endpoints (forwarding requests to external services).
+- **Response templating:** Integrate Handlebars templates to craft dynamic responses based on request headers, query parameters, path parameters, and body content.
+- **Kubernetes Ready:** Includes a Helm chart and Dockerfile for containerized deployments.
+- **Observability:** Integrated with OpenTelemetry to capture metrics and observability data.
 
 ### TO DO
 
@@ -27,21 +38,153 @@ Mochi streamlines the mock server creation process, eliminating the need for ad 
 - advanced latency profiles
 - templating with request body access (json, xml...)
 
+---
+
+## Principles of URIs Formation
+
+Mochi organizes its configuration around “systems” and “APIs”. Each system represents a logical group of endpoints, and APIs can be defined directly at the system level or within subdirectories (often representing versions or groups).
+
+When the configuration is loaded, Mochi builds two main routers:
+
+1. **Static Router:** Serves endpoints with preconfigured, static (or templated) responses.
+2. **Proxy Router:** Forwards requests to a target URL as specified in the configuration.
+
+### Static Endpoints
+
+- **URI Structure:**  
+  - **Root API:** If a system defines its API directly (e.g., via a single `api.yml`), the endpoints will be available under:
+
+    ```bash
+    /static/{system_name}/{route}
+    ```
+
+  - **Sub-APIs:** If a system contains subdirectories (e.g., `v1/`, `v2/`), each folder name becomes an API prefix. Endpoints are then accessible at:
+
+    ```bash
+    /static/{system_name}/{api_folder}/{route}
+    ```
+
+**Example:**
+
+A system named `system` with a single API: `system/api.yml`
+
+```yaml
+rules:
+  - matches: POST /route
+    response: !OkJson "{ \"content\": \"hello\" }"
+```
+
+The endpoint is exposed at:
+
+```bash
+/static/system/route
+```
+
+If the system uses API subdirectories:
+
+```markdown
+system/
+    v1/
+        api.yml
+    v2/
+        api.yml
+```
+
+Then the endpoints will be:
+
+```bash
+/static/system/v1/{route defined in v1/api.yml}
+/static/system/v2/{route defined in v2/api.yml}
+```
+
+### Proxy Endpoints
+
+- **URI Structure:** Proxy endpoints are made available under the `/proxy` prefix. The format is as follows:
+
+```bash
+/proxy/{system_name}/{api_name}/{remaining_path}
+```
+
+- **How it works:** When a proxy is configured (via a `proxy.yml` file), requests to the corresponding proxy endpoint are forwarded to the target URL specified in the configuration. The remaining path (and any query parameters) is appended to the proxy URL.
+
+**Example:**
+
+A system named system with an API in the folder mvp that includes proxy configuration:
+
+```markdown
+system/
+    mvp/
+        api.yml
+        proxy.yml
+```
+
+The proxy configuration file `proxy.yml` might look like this:
+
+```yaml
+url: http://example.com/api/
+```
+
+A GET request to the following endpoint:
+
+```bash
+/proxy/system/mvp/resource?query=123
+```
+
+Will be forwarded to:
+
+```bash
+http://example.com/api/resource?query=123
+```
+
+---
+
 ## Getting started
 
 ### Prerequisites
 
-- Install helm kubectl
-- Rust for local development
+- **Rust:** Required for local development.
+- **Helm & kubectl:** For Kubernetes deployments.
+- **Docker:** For containerized builds.
 
-### Helm - For now
+### Installation
 
-- Clone the repo <https://github.com/bloom-perf/mochi.git>
-- Copy `./helm` and adapt `./helm/values.yaml`
-- Modify `./helm/config`
-- `helm install`
+**1. Clone the repository:**
 
-## Configuration
+```bash
+git clone https://github.com/Bloom-Perf/mochi.git
+cd mochi
+```
+
+**2. Local Development:** Build and run Mochi with:
+
+```bash
+cargo run -- --config-path ./config
+```
+
+**3. Docker Build:** To build a Docker image, run:
+
+```bash
+docker build -t mochi .
+```
+
+Run the Docker container:
+
+```bash
+docker run -p 3000:3000 mochi
+```
+
+**4. Kubernetes Deployment:**
+
+- Customize `helm/values.yaml`and `helm/config` as needed.
+- Install the Helm chart:
+
+```bash
+helm install mochi ./helm
+```
+
+---
+
+## Configuration Exemples
 
 ### Concepts
 
@@ -57,7 +200,7 @@ Mochi introduces a few simple concepts to organize its configuration
 
 One system called `system` with a single api containing one single route accessible on `mochi/static/system/route`
 
-```
+```markdown
 system/
     api.yml
 ```
@@ -74,7 +217,7 @@ rules:
 
 One system called `system` with two apis located in subfolders accessible on `mochi/static/system/v1/route` and `mochi/static/system/v2/another`
 
-```
+```markdown
 system/
     v1/
         api.yml
@@ -82,7 +225,7 @@ system/
         api.yml
 ```
 
-**v1/api.yml**
+`v1/api.yml`:
 
 ```yaml api.yml
 rules:
@@ -90,7 +233,7 @@ rules:
     response: !OkJson "{content: \"hello\"}"
 ```
 
-**v2/api.yml**
+`v2/api.yml`:
 
 ```yaml api.yml
 rules:
@@ -102,7 +245,7 @@ rules:
 
 One system called `system` with two apis located in subfolders accessible on `mochi/static/system/v1/route` and `mochi/static/system/v2/another`
 
-```
+```markdown
 system/
     data/
         response.yml
@@ -112,7 +255,7 @@ system/
         api.yml
 ```
 
-**data/response.yml**
+`data/response.yml`:
 
 ```yaml response
 status: 200
@@ -123,7 +266,7 @@ data: |
   }
 ```
 
-**v1/api.yml**
+`v1/api.yml`:
 
 ```yaml api.yml
 rules:
@@ -131,7 +274,7 @@ rules:
     response: !File response
 ```
 
-**v2/api.yml**
+`v2/api.yml`:
 
 ```yaml api.yml
 rules:
@@ -149,7 +292,7 @@ Access
 - request url path parameters with `url.path.` prefix like this `{{url.path.my_path_parameter}}`
 - request url query parameters with `url.query.` prefix like this `{{url.query.my_query_parameter}}`
 
-**response.yml**
+`response.yml`:
 
 ```yaml
 status: 200
