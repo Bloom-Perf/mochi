@@ -4,11 +4,9 @@ Contributions to Mochi are most welcome, whether you wish to report a bug, submi
 
 Submit issues and feature requests to the GitHub [issue tracker](https://github.com/Bloom-Perf/mochi/issues) and propose changes through GitHub [pull requests](https://github.com/Bloom-Perf/mochi/pulls).
 
-
 ## Help wanted
 
 There are several issues tagged as [help wanted](https://github.com/Bloom-Perf/mochi/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) in the GitHub issue tracker, for which we would be especially grateful for assistance.
-
 
 ## License
 

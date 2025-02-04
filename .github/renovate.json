@@ -1,7 +1,54 @@
 {
   "extends": [
-    "config:best-practices"
+    "config:best-practices",
+    ":semanticCommits",
+    ":automergePatch",
+    ":automergeMinor",
+    ":maintainLockFilesWeekly"
   ],
   "prConcurrentLimit": 20,
-  "commitMessagePrefix": "⬆️"
+  "commitMessagePrefix": "⬆️",
+  "commitMessageExtra": "🔀",
+  "commitMessageAction": "Update",
+  "commitBody": "Signed-off-by: Renovate Bot <bot@renovateapp.com>",
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "breaking"
+      ],
+      "commitMessagePrefix": "💥"
+    },
+    {
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "labels": [
+        "dependencies",
+        "patch"
+      ],
+      "commitMessagePrefix": "🩹"
+    },
+    {
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "labels": [
+        "dev-dependencies"
+      ],
+      "commitMessagePrefix": "🔧"
+    }
+  ],
+  "schedule": [
+    "every weekend"
+  ],
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformCommit": "enabled"
 }
