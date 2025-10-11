@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 rust:1.90-alpine3.20@sha256:e55d285331a8b14d0cd56a93bf6184891c99a811285c9bc554511feaa8f30f33 AS builder
+FROM --platform=linux/amd64 rust:1.90-alpine3.20@sha256:ef86f37c2819ebd1ecb1dbd7efda70c693cb013232688aa136a5a2f1e3b65e55 AS builder
 
 RUN apk add --no-cache clang lld musl-dev pkgconf openssl-dev openssl-libs-static
 
