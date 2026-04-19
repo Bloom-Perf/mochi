@@ -16,7 +16,7 @@ jobs:
 
       # https://github.com/marketplace/actions/push-to-ghcr
       - name: Build and publish a Docker image for ${{ github.repository }}
-        uses: macbre/push-to-ghcr@29d48bf1765f949865339ad1f37f2e68041b3204 # master
+        uses: macbre/push-to-ghcr@0a684486e853b88a95e64a21d3e534075bc6fe34 # master
         with:
           image_name: ${{ github.repository }}  # it will be lowercased internally
           github_token: ${{ secrets.GITHUB_TOKEN }}
