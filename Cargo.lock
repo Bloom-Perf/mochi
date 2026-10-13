@@ -1170,7 +1170,7 @@ dependencies = [
  "indoc",
  "itertools",
  "log",
- "opentelemetry 0.32.0",
+ "opentelemetry 0.33.1",
  "regex",
  "reqwest",
  "serde",
@@ -1248,9 +1248,9 @@ dependencies = [
 
 [[package]]
 name = "opentelemetry"
-version = "0.32.0"
+version = "0.33.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0142c63252a9e054e68a4c61a5778f7b14f576274d593f8ce883d191a099682"
+checksum = "8c1f1a6ac9c875a4941e4c7c085b61e8f4daa326de03b4701768c3491a6ad9ee"
 dependencies = [
  "futures-core",
  "futures-sink",
